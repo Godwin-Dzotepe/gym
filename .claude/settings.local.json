@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:app.gymdesk.com)",
+      "WebFetch(domain:gymdesk.com)",
+      "Bash(npm --version)",
+      "Bash(npx:*)"
+    ]
+  }
+}
