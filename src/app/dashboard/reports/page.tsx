@@ -16,9 +16,9 @@ export default async function ReportsPage() {
   ] = await Promise.all([
     prisma.payment.aggregate({ where: { status: "PAID" }, _sum: { amount: true } }),
     prisma.$queryRaw<{ month: string; revenue: number }[]>`
-      SELECT DATE_FORMAT(createdAt, '%b %Y') as month, SUM(amount) as revenue
+      SELECT DATE_FORMAT(MIN(createdAt), '%b %Y') as month, SUM(amount) as revenue
       FROM Payment WHERE status = 'PAID' AND createdAt >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-      GROUP BY DATE_FORMAT(createdAt, '%Y-%m') ORDER BY MIN(createdAt) ASC
+      GROUP BY DATE_FORMAT(createdAt, '%Y-%m') ORDER BY DATE_FORMAT(createdAt, '%Y-%m') ASC
     `,
     prisma.member.groupBy({ by: ["status"], _count: true }),
     prisma.plan.findMany({
