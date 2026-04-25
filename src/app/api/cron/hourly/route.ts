@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const upcomingClasses = await prisma.class.findMany({
     where: { isActive: true, startTime: { gte: windowStart, lte: windowEnd } },
     select: {
-      name: true,
+      title: true,
       startTime: true,
       bookings: {
         where: { cancelled: false },
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         where: {
           memberId: member.id,
           type: "SYSTEM",
-          title: { contains: cls.name },
+          title: { contains: cls.title },
           createdAt: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) },
         },
       });
@@ -62,8 +62,8 @@ export async function GET(req: NextRequest) {
         data: {
           memberId: member.id,
           type: "SYSTEM",
-          title: `Reminder: ${cls.name} starts soon`,
-          message: `Your class "${cls.name}" starts at ${startLabel}. See you there!`,
+          title: `Reminder: ${cls.title} starts soon`,
+          message: `Your class "${cls.title}" starts at ${startLabel}. See you there!`,
           link: `/portal/classes`,
         },
       });
@@ -73,8 +73,8 @@ export async function GET(req: NextRequest) {
           await transporter.sendMail({
             from: `"${gymName}" <${settings!.smtpUser}>`,
             to: member.email,
-            subject: `Reminder: ${cls.name} starts in ~1 hour`,
-            html: `<p>Hi ${member.firstName},</p><p>Just a reminder that <strong>${cls.name}</strong> starts at <strong>${startLabel}</strong>. See you soon!</p>`,
+            subject: `Reminder: ${cls.title} starts in ~1 hour`,
+            html: `<p>Hi ${member.firstName},</p><p>Just a reminder that <strong>${cls.title}</strong> starts at <strong>${startLabel}</strong>. See you soon!</p>`,
           });
         } catch { /* silent */ }
       }
