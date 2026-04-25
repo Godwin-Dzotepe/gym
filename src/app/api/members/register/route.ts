@@ -70,12 +70,25 @@ export async function POST(req: NextRequest) {
             else if (billingCycle === "YEARLY")  endDate.setFullYear(endDate.getFullYear() + plan.duration);
           }
 
+          // Calculate nextBillingDate
+          let nextBillingDate: Date | null = null;
+          if (plan.durationType === "ONGOING") {
+            nextBillingDate = new Date();
+            if (billingCycle === "DAILY")        nextBillingDate.setDate(nextBillingDate.getDate() + 1);
+            else if (billingCycle === "WEEKLY")  nextBillingDate.setDate(nextBillingDate.getDate() + 7);
+            else if (billingCycle === "MONTHLY") nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+            else if (billingCycle === "YEARLY")  nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+          } else {
+            nextBillingDate = endDate;
+          }
+
           const memberPlan = await tx.memberPlan.create({
             data: {
               memberId: member.id,
               planId,
               startDate: new Date(),
               endDate,
+              nextBillingDate,
               paymentMethod: (paymentMethod ?? "CASH") as any,
               isActive: true,
             },
@@ -121,6 +134,12 @@ export async function POST(req: NextRequest) {
         ] : []),
       ]);
     }
+
+    // Auto-convert any matching lead
+    await prisma.lead.updateMany({
+      where: { email, status: { not: "CONVERTED" } },
+      data: { status: "CONVERTED", convertedAt: new Date() },
+    });
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {

@@ -37,11 +37,23 @@ export async function POST(req: NextRequest) {
 
   // Record attendance
   await prisma.attendance.create({
-    data: {
-      memberId: member.id,
-      method: method ?? "PIN",
-    },
+    data: { memberId: member.id, method: method ?? "PIN" },
   });
+
+  // Attendance milestone notifications
+  const totalAttendance = await prisma.attendance.count({ where: { memberId: member.id } });
+  const MILESTONES = [10, 25, 50, 100, 200, 500];
+  if (MILESTONES.includes(totalAttendance)) {
+    await prisma.notification.create({
+      data: {
+        memberId: member.id,
+        type: "ATTENDANCE_MILESTONE",
+        title: `🏆 ${totalAttendance} Sessions!`,
+        message: `Congratulations ${member.firstName}! You've completed ${totalAttendance} sessions at the gym. Keep it up!`,
+        link: `/portal/attendance`,
+      },
+    });
+  }
 
   // Get active plan
   const activePlan = await prisma.memberPlan.findFirst({
@@ -54,6 +66,8 @@ export async function POST(req: NextRequest) {
       name: `${member.firstName} ${member.lastName}`,
       plan: activePlan?.plan.name ?? "No active plan",
       status: member.status,
+      totalAttendance,
+      milestone: MILESTONES.includes(totalAttendance) ? totalAttendance : null,
     },
   });
 }
