@@ -31,10 +31,12 @@ export async function GET(req: NextRequest) {
 
   const upcomingClasses = await prisma.class.findMany({
     where: { isActive: true, startTime: { gte: windowStart, lte: windowEnd } },
-    include: {
+    select: {
+      name: true,
+      startTime: true,
       bookings: {
         where: { cancelled: false },
-        include: { member: { select: { id: true, firstName: true, email: true } } },
+        select: { member: { select: { id: true, firstName: true, email: true } } },
       },
     },
   });
