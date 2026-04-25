@@ -1,0 +1,700 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  STAFF
+  MEMBER
+}
+
+enum MemberStatus {
+  PENDING
+  ACTIVE
+  FROZEN
+  CANCELLED
+  LEAD
+}
+
+enum GymType {
+  FITNESS
+  MARTIAL_ARTS
+  YOGA
+  DANCE
+  PILATES
+  GYMNASTICS
+  CROSSFIT
+  CLUB
+}
+
+enum BillingCycle {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum PlanType {
+  RECURRING
+  ONE_TIME
+  PER_SESSION
+  TRIAL
+}
+
+enum PlanDurationType {
+  ONGOING
+  LIMITED
+  SPECIFIC_DATES
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  FAILED
+  REFUNDED
+  WAIVED
+  VOID
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  ONLINE
+  MANUAL
+  CHECK
+  REFERRAL_CREDIT
+  INVOICE
+  BALANCE
+  IDEAL
+  BANCONTACT
+  SKIPPED
+}
+
+enum LeadStatus {
+  INQUIRY
+  CONTACTED
+  TRIAL
+  NEGOTIATING
+  CONVERTED
+  LOST
+}
+
+enum AttendanceMethod {
+  PIN
+  QR_CODE
+  BARCODE
+  NAME_SEARCH
+  MANUAL
+  MASS_CHECKIN
+}
+
+enum NotificationType {
+  FAILED_PAYMENT
+  EXPIRING_MEMBERSHIP
+  EXPIRY_REMINDER
+  NEW_MEMBER
+  NEW_LEAD
+  ATTENDANCE_MILESTONE
+  RANK_PROMOTION
+  PAYMENT_RECEIVED
+  SYSTEM
+}
+
+enum MessageType {
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum FamilyRelationship {
+  PARENT
+  SPOUSE
+  SIBLING
+  FAMILY_MEMBER
+  FRIEND
+  LEGAL_GUARDIAN
+  CARETAKER
+  OTHER
+}
+
+enum RecurringStatus {
+  ACTIVE
+  CANCELLED
+  PAUSED
+}
+
+// ─── CORE USER & STAFF ───────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  role          Role      @default(MEMBER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  member        Member?
+  staff         Staff?
+}
+
+model Staff {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  firstName   String
+  lastName    String
+  phone       String?
+  position    String?
+  isActive    Boolean   @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sales       Sale[]
+}
+
+// ─── GYM SETTINGS ────────────────────────────────────────────────────────────
+
+model GymSettings {
+  id                          String    @id @default(cuid())
+  gymName                     String
+  gymType                     GymType   @default(FITNESS)
+  logo                        String?
+  address                     String?
+  phone                       String?
+  email                       String?
+  currency                    String    @default("GHS")
+  timezone                    String    @default("Africa/Accra")
+  enableBeltRanks             Boolean   @default(false)
+  enableReferrals             Boolean   @default(true)
+  enablePOS                   Boolean   @default(true)
+  enableFacilityAccess        Boolean   @default(false)
+  enableZoom                  Boolean   @default(false)
+  zoomApiKey                  String?
+  smtpHost                    String?
+  smtpPort                    Int?
+  smtpUser                    String?
+  smtpPass                    String?
+  smsApiKey                   String?
+  // Member Portal Settings
+  portalEnabled               Boolean   @default(true)
+  portalAllowEditProfile      Boolean   @default(true)
+  portalVisitorAccess         Boolean   @default(false)
+  portalShowPayments          Boolean   @default(true)
+  portalShowMembershipCard    Boolean   @default(true)
+  portalAllowRemovePayment    Boolean   @default(false)
+  portalAllowUpdateRank       Boolean   @default(false)
+  portalShowPromotionCriteria Boolean   @default(false)
+  kioskPin                    String?
+  // Expiry Notification Settings
+  expiryNotifEnabled          Boolean   @default(false)
+  expiryNotifDays             Int       @default(7)
+  expiryNotifEmail            Boolean   @default(true)
+  expiryNotifSms              Boolean   @default(false)
+  expiryNotifEmailTemplate    String?   @db.Text
+  expiryNotifSmsTemplate      String?   @db.Text
+  // Billing Settings
+  taxRate                     Decimal   @default(0) @db.Decimal(5, 2)
+  lateFeeDefault              Decimal   @default(0) @db.Decimal(10, 2)
+  lateFeeAfterDays            Int       @default(5)
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+}
+
+// ─── MEMBERS ─────────────────────────────────────────────────────────────────
+
+model Member {
+  id                String        @id @default(cuid())
+  userId            String        @unique
+  memberNumber      String        @unique
+  firstName         String
+  lastName          String
+  email             String        @unique
+  phone             String?
+  dateOfBirth       DateTime?
+  gender            String?
+  address           String?
+  city              String?
+  profilePhoto      String?
+  status            MemberStatus  @default(PENDING)
+  gymType           GymType       @default(FITNESS)
+  emergencyName     String?
+  emergencyPhone    String?
+  emergencyRelation String?
+  referredById      String?
+  notes             String?       @db.Text
+  waiverSigned      Boolean       @default(false)
+  waiverSignedAt    DateTime?
+  waiverText        String?       @db.Text
+  pinCode           String?
+  checkinCode       String?
+  qrCode            String?
+  barcode           String?
+  balance           Decimal       @default(0) @db.Decimal(10, 2)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referredBy        Member?       @relation("MemberReferrals", fields: [referredById], references: [id])
+  referrals         Member[]      @relation("MemberReferrals")
+
+  familyMemberships FamilyMember[]
+  memberPlans       MemberPlan[]
+  invoices          Invoice[]
+  payments          Payment[]
+  attendances       Attendance[]
+  classBookings     ClassBooking[]
+  beltRanks         MemberRank[]
+  notifications     Notification[]
+  contentAccess     ContentAccess[]
+  messages          MemberMessage[]
+  sales             Sale[]
+  recurringPayments RecurringPayment[]
+}
+
+// ─── FAMILY PLANS ─────────────────────────────────────────────────────────────
+
+model Family {
+  id          String         @id @default(cuid())
+  name        String
+  primaryId   String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  members     FamilyMember[]
+  invoices    Invoice[]
+}
+
+model FamilyMember {
+  id           String             @id @default(cuid())
+  familyId     String
+  memberId     String
+  isPrimary    Boolean            @default(false)
+  relationship FamilyRelationship @default(FAMILY_MEMBER)
+  createdAt    DateTime           @default(now())
+
+  family       Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  member       Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, memberId])
+}
+
+// ─── MEMBERSHIP PLANS ─────────────────────────────────────────────────────────
+
+model Plan {
+  id                  String           @id @default(cuid())
+  name                String
+  description         String?          @db.Text
+  planType            PlanType         @default(RECURRING)
+  price               Decimal          @db.Decimal(10, 2)
+  dailyPrice          Decimal?         @db.Decimal(10, 2)
+  weeklyPrice         Decimal?         @db.Decimal(10, 2)
+  monthlyPrice        Decimal?         @db.Decimal(10, 2)
+  yearlyPrice         Decimal?         @db.Decimal(10, 2)
+  billingCycle        BillingCycle     @default(MONTHLY)
+  maxPayments         Int?
+  durationType        PlanDurationType @default(ONGOING)
+  duration            Int              @default(1)
+  signUpFee           Decimal          @default(0) @db.Decimal(10, 2)
+  lateFee             Decimal          @default(0) @db.Decimal(10, 2)
+  lateFeeAfterDays    Int              @default(5)
+  accessLimit         Int?
+  capacity            Int?
+  startOnFirstCheckin Boolean          @default(false)
+  isFamilyShared      Boolean          @default(false)
+  familyDiscount2nd   Int              @default(0)
+  familyDiscount3rd   Int              @default(0)
+  familyDiscount4th   Int              @default(0)
+  maxMembers          Int?
+  features            String?          @db.Text
+  isActive            Boolean          @default(true)
+  allowFreezing       Boolean          @default(true)
+  trialCancelAtEnd    Boolean          @default(true)
+  cancellationFee     Decimal          @default(0) @db.Decimal(10, 2)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  memberPlans   MemberPlan[]
+}
+
+model MemberPlan {
+  id              String        @id @default(cuid())
+  memberId        String
+  planId          String
+  startDate       DateTime
+  endDate         DateTime?
+  nextBillingDate DateTime?
+  paymentMethod   PaymentMethod @default(CASH)
+  isFrozen        Boolean       @default(false)
+  frozenAt        DateTime?
+  frozenUntil     DateTime?
+  isPaused        Boolean       @default(false)
+  pausedAt        DateTime?
+  pausedUntil     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  member          Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  plan            Plan          @relation(fields: [planId], references: [id])
+  invoices        Invoice[]
+}
+
+// ─── BILLING ──────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id             String        @id @default(cuid())
+  invoiceNumber  String        @unique
+  memberId       String
+  familyId       String?
+  memberPlanId   String?
+  description    String?
+  amount         Decimal       @db.Decimal(10, 2)
+  discount       Decimal       @default(0) @db.Decimal(10, 2)
+  tax            Decimal       @default(0) @db.Decimal(10, 2)
+  total          Decimal       @db.Decimal(10, 2)
+  status         PaymentStatus @default(PENDING)
+  paymentMethod  PaymentMethod @default(CASH)
+  transactionId  String?
+  dueDate        DateTime
+  paidAt         DateTime?
+  sendEmail      Boolean       @default(false)
+  notes          String?
+  paymentLink    String?
+  retryCount     Int           @default(0)
+  lastRetryAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  member         Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  family         Family?       @relation(fields: [familyId], references: [id])
+  memberPlan     MemberPlan?   @relation(fields: [memberPlanId], references: [id])
+  payments       Payment[]
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  invoiceId     String
+  memberId      String
+  amount        Decimal       @db.Decimal(10, 2)
+  method        PaymentMethod @default(CASH)
+  status        PaymentStatus @default(PAID)
+  reference     String?
+  notes         String?
+  recordedById  String?
+  createdAt     DateTime      @default(now())
+
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  member        Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model RecurringPayment {
+  id            String          @id @default(cuid())
+  memberId      String
+  amount        Decimal         @db.Decimal(10, 2)
+  discount      Decimal         @default(0) @db.Decimal(10, 2)
+  tax           Decimal         @default(0) @db.Decimal(10, 2)
+  description   String?
+  paymentMethod PaymentMethod   @default(CASH)
+  frequency     Int             @default(1)
+  billingCycle  BillingCycle    @default(MONTHLY)
+  scheduledDay  Int             @default(1)
+  firstPayment  DateTime
+  nextPayment   DateTime?
+  status        RecurringStatus @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  member        Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model Discount {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  name        String?
+  type        String    @default("PERCENT")
+  value       Decimal   @db.Decimal(10, 2)
+  usageLimit  Int?
+  usedCount   Int       @default(0)
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ─── ATTENDANCE ───────────────────────────────────────────────────────────────
+
+model Attendance {
+  id            String           @id @default(cuid())
+  memberId      String
+  classId       String?
+  method        AttendanceMethod @default(PIN)
+  checkedInAt   DateTime         @default(now())
+  checkedOutAt  DateTime?
+  isBackdated   Boolean          @default(false)
+  originalDate  DateTime?
+  recordedById  String?
+  notes         String?
+
+  member        Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  class         Class?           @relation(fields: [classId], references: [id])
+}
+
+// ─── CLASSES & SCHEDULING ────────────────────────────────────────────────────
+
+model Class {
+  id            String         @id @default(cuid())
+  title         String
+  description   String?        @db.Text
+  instructorId  String?
+  location      String?
+  zoomLink      String?
+  startTime     DateTime
+  endTime       DateTime
+  capacity      Int?
+  isRecurring   Boolean        @default(false)
+  recurringRule String?
+  color         String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  bookings      ClassBooking[]
+  attendances   Attendance[]
+}
+
+model ClassBooking {
+  id          String   @id @default(cuid())
+  classId     String
+  memberId    String
+  bookedAt    DateTime @default(now())
+  cancelled   Boolean  @default(false)
+  cancelledAt DateTime?
+
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, memberId])
+}
+
+// ─── LEADS / CRM ─────────────────────────────────────────────────────────────
+
+model Lead {
+  id            String     @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String
+  phone         String?
+  source        String?
+  status        LeadStatus @default(INQUIRY)
+  notes         String?    @db.Text
+  trialDate     DateTime?
+  convertedAt   DateTime?
+  assignedToId  String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  activities    LeadActivity[]
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  leadId    String
+  action    String
+  notes     String?  @db.Text
+  byUserId  String?
+  createdAt DateTime @default(now())
+
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+// ─── BELT RANKS / PROGRESSION ────────────────────────────────────────────────
+
+model BeltRank {
+  id              String       @id @default(cuid())
+  name            String
+  color           String?
+  order           Int
+  gymType         GymType      @default(MARTIAL_ARTS)
+  sessionsRequired Int?
+  monthsRequired  Int?
+  description     String?
+  createdAt       DateTime     @default(now())
+
+  memberRanks     MemberRank[]
+}
+
+model MemberRank {
+  id          String    @id @default(cuid())
+  memberId    String
+  rankId      String
+  awardedAt   DateTime  @default(now())
+  awardedById String?
+  notes       String?
+
+  member      Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  rank        BeltRank  @relation(fields: [rankId], references: [id])
+}
+
+// ─── POINT OF SALE ───────────────────────────────────────────────────────────
+
+model ProductCategory {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+
+  products  Product[]
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal          @db.Decimal(10, 2)
+  cost        Decimal          @default(0) @db.Decimal(10, 2)
+  stock       Int              @default(0)
+  category    String?
+  categoryId  String?
+  image       String?
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  productCategory ProductCategory? @relation(fields: [categoryId], references: [id])
+  saleItems   SaleItem[]
+}
+
+model Sale {
+  id            String        @id @default(cuid())
+  saleNumber    String        @unique @default(cuid())
+  memberId      String?
+  staffId       String?
+  subtotal      Decimal       @db.Decimal(10, 2)
+  discount      Decimal       @default(0) @db.Decimal(10, 2)
+  discountCode  String?
+  tax           Decimal       @default(0) @db.Decimal(10, 2)
+  total         Decimal       @db.Decimal(10, 2)
+  method        PaymentMethod @default(CASH)
+  transactionId String?
+  sendReceipt   Boolean       @default(false)
+  notes         String?       @db.Text
+  status        PaymentStatus @default(PAID)
+  soldById      String?
+  createdAt     DateTime      @default(now())
+
+  member        Member?       @relation(fields: [memberId], references: [id])
+  staff         Staff?        @relation(fields: [staffId], references: [id])
+  items         SaleItem[]
+}
+
+model SaleItem {
+  id          String   @id @default(cuid())
+  saleId      String
+  productId   String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  discount    Decimal  @default(0) @db.Decimal(10, 2)
+  total       Decimal  @db.Decimal(10, 2)
+
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+// ─── CONTENT LIBRARY ─────────────────────────────────────────────────────────
+
+model ContentItem {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?   @db.Text
+  type          String
+  url           String?
+  fileSize      Int?
+  thumbnail     String?
+  isPublished   Boolean   @default(false)
+  accessByRank  String?
+  accessByPlan  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accesses      ContentAccess[]
+}
+
+model ContentAccess {
+  id          String      @id @default(cuid())
+  contentId   String
+  memberId    String
+  accessedAt  DateTime    @default(now())
+  completed   Boolean     @default(false)
+  completedAt DateTime?
+
+  content     ContentItem @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, memberId])
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+
+model Notification {
+  id          String           @id @default(cuid())
+  memberId    String?
+  type        NotificationType
+  title       String
+  message     String           @db.Text
+  isRead      Boolean          @default(false)
+  link        String?
+  createdAt   DateTime         @default(now())
+
+  member      Member?          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+// ─── MESSAGING ───────────────────────────────────────────────────────────────
+
+model Message {
+  id          String      @id @default(cuid())
+  subject     String?
+  body        String      @db.Text
+  type        MessageType @default(EMAIL)
+  sentById    String?
+  segment     String?
+  sentAt      DateTime    @default(now())
+  totalSent   Int         @default(0)
+
+  recipients  MemberMessage[]
+}
+
+model MemberMessage {
+  id        String   @id @default(cuid())
+  messageId String
+  memberId  String
+  sentAt    DateTime @default(now())
+  opened    Boolean  @default(false)
+
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+// ─── REFERRALS ────────────────────────────────────────────────────────────────
+
+model Referral {
+  id            String   @id @default(cuid())
+  referrerId    String
+  referredEmail String
+  referredName  String
+  converted     Boolean  @default(false)
+  rewardGiven   Boolean  @default(false)
+  rewardAmount  Decimal? @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
+  convertedAt   DateTime?
+}
