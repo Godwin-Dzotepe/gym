@@ -67,9 +67,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Activate member if pending
-  await prisma.member.update({
-    where: { id: memberId },
+  // Reactivate member if PENDING or FROZEN
+  await prisma.member.updateMany({
+    where: { id: memberId, status: { in: ["PENDING", "FROZEN"] } },
     data: { status: "ACTIVE" },
   });
 

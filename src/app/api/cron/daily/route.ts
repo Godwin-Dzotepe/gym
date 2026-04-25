@@ -3,33 +3,31 @@ import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
 import { generateInvoiceNumber } from "@/lib/utils";
 
-// GET /api/cron/daily
-// Run once per day via scheduler, cron-job.org, or Vercel Cron.
-// Handles: freeze expired members, suspend non-payers, late fees,
-//          lead follow-up reminders, birthday greetings.
-
+// GET /api/cron/daily  — run once per day at 7am
 export async function GET(req: NextRequest) {
   const secret = req.headers.get("x-cron-secret");
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const now = new Date();
-  const today = new Date(now); today.setHours(0, 0, 0, 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
   const results: Record<string, number> = {
-    frozenExpired: 0,
-    suspendedNonPayers: 0,
-    lateFeesApplied: 0,
-    leadReminders: 0,
-    birthdaysSent: 0,
+    invoicesMarkedFailed:  0,
+    frozenExpired:         0,
+    suspendedNonPayers:    0,
+    lateFeesApplied:       0,
+    ranksAutoPromoted:     0,
+    leadReminders:         0,
+    birthdaysSent:         0,
   };
 
   const settings = await prisma.gymSettings.findFirst();
-  const gymName = settings?.gymName ?? "QYM";
-  const lateFeeAmount = Number(settings?.lateFeeDefault ?? 0);
+  const gymName         = settings?.gymName       ?? "QYM";
+  const lateFeeAmount   = Number(settings?.lateFeeDefault   ?? 0);
   const lateFeeAfterDays = settings?.lateFeeAfterDays ?? 5;
 
-  // Build email transporter if SMTP configured
+  // SMTP transporter (optional)
   let transporter: nodemailer.Transporter | null = null;
   if (settings?.smtpHost && settings.smtpUser && settings.smtpPass) {
     transporter = nodemailer.createTransport({
@@ -42,21 +40,46 @@ export async function GET(req: NextRequest) {
 
   async function sendEmail(to: string, subject: string, html: string) {
     if (!transporter || !to) return;
-    try { await transporter.sendMail({ from: `"${gymName}" <${settings!.smtpUser}>`, to, subject, html }); }
-    catch { /* silent — don't abort cron on email failure */ }
+    try { await transporter!.sendMail({ from: `"${gymName}" <${settings!.smtpUser}>`, to, subject, html }); }
+    catch { /* silent */ }
   }
 
-  // ─── 1. FREEZE MEMBERS WITH EXPIRED LIMITED PLANS ──────────────────────────
+  // ─── 1. MARK OVERDUE INVOICES AS FAILED ─────────────────────────────────────
+  // Any PENDING invoice whose dueDate has passed gets marked FAILED.
+  const overdueIds = await prisma.invoice.findMany({
+    where: { status: "PENDING", dueDate: { lt: today } },
+    select: { id: true, memberId: true, invoiceNumber: true, total: true },
+  });
+
+  if (overdueIds.length > 0) {
+    await prisma.invoice.updateMany({
+      where: { id: { in: overdueIds.map(i => i.id) } },
+      data: { status: "FAILED" },
+    });
+
+    for (const inv of overdueIds) {
+      await prisma.notification.create({
+        data: {
+          memberId: inv.memberId,
+          type: "FAILED_PAYMENT",
+          title: "Payment Overdue",
+          message: `Invoice ${inv.invoiceNumber} for ${Number(inv.total).toFixed(2)} is now overdue. Please settle your balance to avoid suspension.`,
+          link: `/portal/payments`,
+        },
+      });
+    }
+    results.invoicesMarkedFailed = overdueIds.length;
+  }
+
+  // ─── 2. FREEZE MEMBERS WITH EXPIRED LIMITED PLANS ───────────────────────────
   const expiredPlans = await prisma.memberPlan.findMany({
     where: { isActive: true, endDate: { lt: today } },
     include: { member: true, plan: true },
   });
 
   for (const mp of expiredPlans) {
-    // Deactivate the plan
     await prisma.memberPlan.update({ where: { id: mp.id }, data: { isActive: false } });
 
-    // Check if member has another active plan
     const otherActive = await prisma.memberPlan.findFirst({
       where: { memberId: mp.memberId, isActive: true, id: { not: mp.id } },
     });
@@ -84,7 +107,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ─── 2. SUSPEND ONGOING MEMBERS PAST nextBillingDate WITH UNPAID INVOICE ───
+  // ─── 3. SUSPEND ONGOING MEMBERS 7+ DAYS PAST nextBillingDate (unpaid) ───────
   const overdueOngoing = await prisma.memberPlan.findMany({
     where: {
       isActive: true,
@@ -95,17 +118,13 @@ export async function GET(req: NextRequest) {
   });
 
   for (const mp of overdueOngoing) {
-    // Check for unpaid invoice for this plan
     const unpaid = await prisma.invoice.findFirst({
       where: { memberPlanId: mp.id, status: { in: ["PENDING", "FAILED"] } },
     });
 
     if (unpaid && mp.member.status === "ACTIVE") {
-      // How many days overdue?
       const daysOverdue = Math.floor((today.getTime() - (mp.nextBillingDate?.getTime() ?? today.getTime())) / 86400000);
-
       if (daysOverdue >= 7) {
-        // Suspend after 7 days of non-payment
         await prisma.member.update({ where: { id: mp.memberId }, data: { status: "FROZEN" } });
 
         await prisma.notification.create({
@@ -113,7 +132,7 @@ export async function GET(req: NextRequest) {
             memberId: mp.memberId,
             type: "FAILED_PAYMENT",
             title: "Membership Suspended",
-            message: `Your membership has been suspended due to an unpaid invoice of ${Number(unpaid.total).toFixed(2)}. Please settle your balance to regain access.`,
+            message: `Your membership has been suspended due to an unpaid balance of ${Number(unpaid.total).toFixed(2)}. Please settle to regain access.`,
             link: `/portal/payments`,
           },
         });
@@ -129,26 +148,21 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ─── 3. APPLY LATE FEES ON OVERDUE INVOICES ─────────────────────────────────
+  // ─── 4. APPLY LATE FEES ──────────────────────────────────────────────────────
   if (lateFeeAmount > 0) {
     const cutoff = new Date(today);
     cutoff.setDate(cutoff.getDate() - lateFeeAfterDays);
 
-    const overdueInvoices = await prisma.invoice.findMany({
-      where: {
-        status: { in: ["PENDING", "FAILED"] },
-        dueDate: { lt: cutoff },
-      },
+    const failedInvoices = await prisma.invoice.findMany({
+      where: { status: "FAILED", dueDate: { lt: cutoff } },
       include: { member: true },
     });
 
-    for (const inv of overdueInvoices) {
-      // Only apply late fee once per invoice — check if one already exists
+    for (const inv of failedInvoices) {
       const alreadyFined = await prisma.invoice.findFirst({
         where: {
           memberId: inv.memberId,
-          description: { contains: "Late Fee" },
-          createdAt: { gte: cutoff },
+          description: { contains: `Late Fee (overdue: ${inv.invoiceNumber})` },
         },
       });
       if (alreadyFined) continue;
@@ -160,8 +174,7 @@ export async function GET(req: NextRequest) {
           memberPlanId: inv.memberPlanId,
           description: `Late Fee (overdue: ${inv.invoiceNumber})`,
           amount: lateFeeAmount,
-          discount: 0,
-          tax: 0,
+          discount: 0, tax: 0,
           total: lateFeeAmount,
           paymentMethod: inv.paymentMethod,
           dueDate: today,
@@ -174,7 +187,7 @@ export async function GET(req: NextRequest) {
           memberId: inv.memberId,
           type: "FAILED_PAYMENT",
           title: "Late Fee Applied",
-          message: `A late fee of ${lateFeeAmount.toFixed(2)} has been added to your account for overdue invoice ${inv.invoiceNumber}.`,
+          message: `A late fee of ${lateFeeAmount.toFixed(2)} has been added for overdue invoice ${inv.invoiceNumber}.`,
           link: `/portal/payments`,
         },
       });
@@ -183,24 +196,75 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ─── 4. LEAD FOLLOW-UP REMINDERS (3 days no contact) ────────────────────────
+  // ─── 5. AUTO-PROMOTE RANKS ───────────────────────────────────────────────────
+  if (settings?.enableBeltRanks) {
+    const ranks = await prisma.beltRank.findMany({ orderBy: { order: "asc" } });
+
+    const activeMembers = await prisma.member.findMany({
+      where: { status: "ACTIVE" },
+      select: {
+        id: true, firstName: true, lastName: true,
+        createdAt: true,
+        _count: { select: { attendances: true } },
+        beltRanks: { include: { rank: true }, orderBy: { awardedAt: "desc" }, take: 1 },
+      },
+    });
+
+    for (const m of activeMembers) {
+      const currentRankOrder = m.beltRanks[0]?.rank?.order ?? -1;
+      const nextRank = ranks.find(r => r.order > currentRankOrder);
+      if (!nextRank) continue;
+
+      const sessionsHave = m._count.attendances;
+      const monthsHave = Math.floor((Date.now() - m.createdAt.getTime()) / (1000 * 60 * 60 * 24 * 30));
+
+      const meetsSession = nextRank.sessionsRequired === null || sessionsHave >= nextRank.sessionsRequired;
+      const meetsMonths  = nextRank.monthsRequired  === null || monthsHave  >= nextRank.monthsRequired;
+
+      if (!meetsSession || !meetsMonths) continue;
+
+      // Don't re-award if already at this rank
+      const alreadyHas = await prisma.memberRank.findFirst({
+        where: { memberId: m.id, rankId: nextRank.id },
+      });
+      if (alreadyHas) continue;
+
+      await prisma.memberRank.create({
+        data: { memberId: m.id, rankId: nextRank.id, notes: "Auto-promoted by system" },
+      });
+
+      await prisma.notification.create({
+        data: {
+          memberId: m.id,
+          type: "RANK_PROMOTION",
+          title: `🥋 Promoted to ${nextRank.name}!`,
+          message: `Congratulations ${m.firstName}! You've been automatically promoted to ${nextRank.name} based on your attendance and time with us.`,
+          link: `/portal/progress`,
+        },
+      });
+
+      await sendEmail(
+        // get email separately since we didn't include it above
+        (await prisma.member.findUnique({ where: { id: m.id }, select: { email: true } }))?.email ?? "",
+        `Congratulations! You've been promoted to ${nextRank.name}`,
+        `<p>Hi ${m.firstName},</p><p>🥋 You've been promoted to <strong>${nextRank.name}</strong>! Keep up the great work.</p>`
+      );
+
+      results.ranksAutoPromoted++;
+    }
+  }
+
+  // ─── 6. LEAD FOLLOW-UP REMINDERS (3 days no contact) ────────────────────────
   const threeDaysAgo = new Date(today);
   threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
-  const staleLead = await prisma.lead.findMany({
-    where: {
-      status: { in: ["INQUIRY", "CONTACTED"] },
-      updatedAt: { lt: threeDaysAgo },
-    },
+  const staleLeads = await prisma.lead.findMany({
+    where: { status: { in: ["INQUIRY", "CONTACTED"] }, updatedAt: { lt: threeDaysAgo } },
   });
 
-  for (const lead of staleLead) {
+  for (const lead of staleLeads) {
     const alreadyNotified = await prisma.notification.findFirst({
-      where: {
-        type: "SYSTEM",
-        title: { contains: lead.firstName },
-        createdAt: { gte: threeDaysAgo },
-      },
+      where: { type: "SYSTEM", title: { contains: `${lead.firstName} ${lead.lastName}` }, createdAt: { gte: threeDaysAgo } },
     });
     if (alreadyNotified) continue;
 
@@ -208,7 +272,7 @@ export async function GET(req: NextRequest) {
       data: {
         type: "SYSTEM",
         title: `Follow up: ${lead.firstName} ${lead.lastName}`,
-        message: `Lead ${lead.firstName} ${lead.lastName} (${lead.email}) has not been contacted in 3+ days. Status: ${lead.status}.`,
+        message: `Lead ${lead.firstName} ${lead.lastName} (${lead.email}) hasn't been contacted in 3+ days. Status: ${lead.status}.`,
         link: `/dashboard/leads/${lead.id}`,
       },
     });
@@ -216,16 +280,13 @@ export async function GET(req: NextRequest) {
     results.leadReminders++;
   }
 
-  // ─── 5. BIRTHDAY GREETINGS ────────────────────────────────────────────────────
+  // ─── 7. BIRTHDAY GREETINGS ────────────────────────────────────────────────────
   const todayMonth = today.getMonth() + 1;
-  const todayDay = today.getDate();
+  const todayDay   = today.getDate();
 
   const birthdayMembers = await prisma.member.findMany({
-    where: {
-      dateOfBirth: { not: null },
-      status: "ACTIVE",
-    },
-    select: { id: true, firstName: true, lastName: true, email: true, dateOfBirth: true },
+    where: { dateOfBirth: { not: null }, status: "ACTIVE" },
+    select: { id: true, firstName: true, email: true, dateOfBirth: true },
   });
 
   for (const m of birthdayMembers) {
@@ -233,7 +294,6 @@ export async function GET(req: NextRequest) {
     const dob = new Date(m.dateOfBirth);
     if (dob.getMonth() + 1 !== todayMonth || dob.getDate() !== todayDay) continue;
 
-    // Don't send twice in the same day
     const alreadySent = await prisma.notification.findFirst({
       where: { memberId: m.id, title: { contains: "Birthday" }, createdAt: { gte: today } },
     });
@@ -244,7 +304,7 @@ export async function GET(req: NextRequest) {
         memberId: m.id,
         type: "SYSTEM",
         title: `🎂 Happy Birthday, ${m.firstName}!`,
-        message: `Happy Birthday ${m.firstName}! Wishing you a wonderful day from all of us at ${gymName}. Keep crushing your fitness goals!`,
+        message: `Happy Birthday ${m.firstName}! Wishing you a wonderful day from all of us at ${gymName}.`,
         link: `/portal`,
       },
     });
@@ -252,7 +312,7 @@ export async function GET(req: NextRequest) {
     await sendEmail(
       m.email,
       `Happy Birthday from ${gymName}! 🎂`,
-      `<p>Hi ${m.firstName},</p><p>🎂 <strong>Happy Birthday!</strong></p><p>Wishing you a fantastic day from all of us at ${gymName}. Keep up the great work on your fitness journey!</p>`
+      `<p>Hi ${m.firstName},</p><p>🎂 <strong>Happy Birthday!</strong> Wishing you a fantastic day from all of us at ${gymName}.</p>`
     );
 
     results.birthdaysSent++;
