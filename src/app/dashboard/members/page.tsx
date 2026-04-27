@@ -34,7 +34,7 @@ export default async function MembersPage({ searchParams }: Props) {
     where.memberPlans = { some: { planId, isActive: true } };
   }
 
-  const [members, total, counts, plans] = await Promise.all([
+  const [members, total, counts, plans, settings] = await Promise.all([
     prisma.member.findMany({
       where,
       include: {
@@ -44,7 +44,6 @@ export default async function MembersPage({ searchParams }: Props) {
           take: 1,
         },
         invoices: { where: { status: "PENDING" }, select: { id: true } },
-        attendances: { orderBy: { checkedInAt: "desc" }, take: 1, select: { checkedInAt: true } },
         _count: { select: { attendances: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -54,6 +53,7 @@ export default async function MembersPage({ searchParams }: Props) {
     prisma.member.count({ where }),
     prisma.member.groupBy({ by: ["status"], _count: true }),
     prisma.plan.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.gymSettings.findFirst({ select: { expiryNotifDays: true } }),
   ]);
 
   const statusCounts = Object.fromEntries(counts.map(c => [c.status, c._count]));
@@ -147,11 +147,10 @@ export default async function MembersPage({ searchParams }: Props) {
           <MembersToolbar plans={plans} currentStatus={status} currentPlanId={planId} currentSearch={search} />
         </div>
 
-        <MembersTable members={members.map(m => ({
-          ...m,
-          balance: Number(m.balance),
-          lastVisit: m.attendances[0]?.checkedInAt ?? null,
-        })) as any} />
+        <MembersTable
+          members={members.map(m => ({ ...m, balance: Number(m.balance) })) as any}
+          warningDays={settings?.expiryNotifDays ?? 7}
+        />
 
         {total > limit && (
           <div className="p-4 border-t border-gray-100 flex items-center justify-between">

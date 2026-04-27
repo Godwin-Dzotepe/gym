@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { formatDate, getInitials } from "@/lib/utils";
-import { MoreHorizontal, Eye, Edit, CreditCard, UserX } from "lucide-react";
+import { MoreHorizontal, Eye, Edit, CreditCard } from "lucide-react";
 import { useState } from "react";
 
 interface Member {
@@ -14,13 +14,28 @@ interface Member {
   phone: string | null;
   status: string;
   createdAt: Date;
-  lastVisit: Date | null;
-  memberPlans: { plan: { name: string } }[];
+  memberPlans: { plan: { name: string }; endDate: Date | null }[];
   invoices: { id: string }[];
   _count: { attendances: number };
 }
 
-export default function MembersTable({ members }: { members: Member[] }) {
+function MembershipCountdown({ endDate, warningDays }: { endDate: Date | null; warningDays: number }) {
+  if (!endDate) return <span className="text-xs text-gray-400">—</span>;
+
+  const days = Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000);
+
+  if (days < 0)
+    return <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Expired</span>;
+  if (days === 0)
+    return <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Today</span>;
+
+  const label = days === 1 ? "1 day left" : `${days} days left`;
+  if (days <= warningDays)
+    return <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">{label}</span>;
+  return <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{label}</span>;
+}
+
+export default function MembersTable({ members, warningDays = 7 }: { members: Member[]; warningDays?: number }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   const statusBadge = (status: string) => {
@@ -43,7 +58,7 @@ export default function MembersTable({ members }: { members: Member[] }) {
             <th className="table-th">Member</th>
             <th className="table-th hidden sm:table-cell">Plan</th>
             <th className="table-th">Status</th>
-            <th className="table-th hidden md:table-cell">Last Visit</th>
+            <th className="table-th hidden md:table-cell">Expires</th>
             <th className="table-th hidden lg:table-cell">Sessions</th>
             <th className="table-th hidden sm:table-cell">Payment</th>
             <th className="table-th hidden lg:table-cell">Joined</th>
@@ -79,8 +94,8 @@ export default function MembersTable({ members }: { members: Member[] }) {
                   {m.status.charAt(0) + m.status.slice(1).toLowerCase()}
                 </span>
               </td>
-              <td className="table-td text-sm text-gray-500 hidden md:table-cell">
-                {m.lastVisit ? formatDate(m.lastVisit) : <span className="text-gray-300">Never</span>}
+              <td className="table-td hidden md:table-cell">
+                <MembershipCountdown endDate={m.memberPlans[0]?.endDate ?? null} warningDays={warningDays} />
               </td>
               <td className="table-td text-sm text-gray-500 hidden lg:table-cell">{m._count.attendances}</td>
               <td className="table-td hidden sm:table-cell">
