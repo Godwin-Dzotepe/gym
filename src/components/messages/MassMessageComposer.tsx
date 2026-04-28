@@ -99,6 +99,7 @@ export default function MassMessageComposer({ memberCount }: { memberCount: numb
       setForm(p => ({ ...p, subject: "", body: "" }));
       setSelectedMember(null);
       setMemberSearch("");
+      window.dispatchEvent(new Event("message-sent"));
       setTimeout(() => setSent(false), 5000);
     } catch (e: any) {
       setLoading(false);

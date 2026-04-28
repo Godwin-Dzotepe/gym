@@ -5,6 +5,16 @@ import nodemailer from "nodemailer";
 import { sendSms } from "@/lib/mnotify";
 import { getIntegrationConfig } from "@/lib/integration-config";
 
+export async function GET() {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const messages = await prisma.message.findMany({
+    orderBy: { sentAt: "desc" },
+    include: { _count: { select: { recipients: true } } },
+  });
+  return NextResponse.json(messages);
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
