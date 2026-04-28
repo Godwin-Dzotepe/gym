@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import nodemailer from "nodemailer";
+import { sendSms, sendEmail as mnotifyEmail } from "@/lib/mnotify";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   const members = await prisma.member.findMany({
     where: memberWhere,
-    select: { id: true, email: true, firstName: true, lastName: true },
+    select: { id: true, email: true, phone: true, firstName: true, lastName: true },
   });
 
   const message = await prisma.message.create({
@@ -34,24 +35,35 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Send emails via SMTP if EMAIL type and SMTP configured
+  const settings = await prisma.gymSettings.findFirst();
+  const gymName = settings?.gymName ?? "Oracle Gym";
+
+  if (type === "SMS" && settings?.smsApiKey) {
+    const phones = members.map(m => m.phone).filter(Boolean) as string[];
+    if (phones.length > 0) {
+      sendSms(settings.smsApiKey, phones, body).catch(() => {});
+    }
+  }
+
   if (type === "EMAIL") {
-    const settings = await prisma.gymSettings.findFirst();
-    if (settings?.smtpHost && settings.smtpUser && settings.smtpPass) {
+    // Try mNotify email first, fall back to SMTP
+    if (settings?.smsApiKey) {
+      const emails = members.map(m => m.email).filter(Boolean) as string[];
+      const html = `<p>Hi,</p><p>${body.replace(/\n/g, "<br/>")}</p><p>— ${gymName}</p>`;
+      mnotifyEmail(settings.smsApiKey, emails, subject ?? `Message from ${gymName}`, html, body, gymName).catch(() => {});
+    } else if (settings?.smtpHost && settings.smtpUser && settings.smtpPass) {
       const transporter = nodemailer.createTransport({
         host: settings.smtpHost,
         port: settings.smtpPort ?? 587,
         secure: (settings.smtpPort ?? 587) === 465,
         auth: { user: settings.smtpUser, pass: settings.smtpPass },
       });
-
-      // Send in background — don't await entire batch before responding
       Promise.allSettled(
         members.map(m =>
           transporter.sendMail({
-            from: `"${settings.gymName}" <${settings.smtpUser}>`,
+            from: `"${gymName}" <${settings.smtpUser}>`,
             to: m.email,
-            subject: subject || `Message from ${settings.gymName}`,
+            subject: subject ?? `Message from ${gymName}`,
             html: `<p>Hi ${m.firstName},</p><p>${body.replace(/\n/g, "<br/>")}</p>`,
             text: `Hi ${m.firstName},\n\n${body}`,
           })

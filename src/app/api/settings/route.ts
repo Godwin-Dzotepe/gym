@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
     taxRate: body.taxRate ? parseFloat(body.taxRate) : 0,
     lateFeeDefault: body.lateFeeDefault ? parseFloat(body.lateFeeDefault) : 0,
     lateFeeAfterDays: body.lateFeeAfterDays ? parseInt(body.lateFeeAfterDays) : 5,
+    smsApiKey: body.smsApiKey || null,
     smtpHost: body.smtpHost || null,
     smtpPort: body.smtpPort ? parseInt(body.smtpPort) : null,
     smtpUser: body.smtpUser || null,

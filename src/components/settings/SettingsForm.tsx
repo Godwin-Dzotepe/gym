@@ -113,6 +113,7 @@ export default function SettingsForm({ settings }: { settings: any }) {
     taxRate:                   settings?.taxRate?.toString()       ?? "0",
     lateFeeDefault:            settings?.lateFeeDefault?.toString() ?? "0",
     lateFeeAfterDays:          settings?.lateFeeAfterDays?.toString() ?? "5",
+    smsApiKey:                 settings?.smsApiKey                 ?? "",
     smtpHost:                  settings?.smtpHost                  ?? "",
     smtpPort:                  settings?.smtpPort?.toString()      ?? "",
     smtpUser:                  settings?.smtpUser                  ?? "",
@@ -171,7 +172,7 @@ export default function SettingsForm({ settings }: { settings: any }) {
     { id: "billing",  label: "Billing",        icon: CreditCard, color: "violet" },
     { id: "features", label: "Features",       icon: Zap,        color: "orange" },
     { id: "notifications", label: "Notifications", icon: BellRing, color: "rose" },
-    { id: "email",    label: "Email / SMTP",   icon: Bell,       color: "sky" },
+    { id: "email",    label: "SMS & Email",     icon: MessageSquare, color: "sky" },
   ];
 
   const activeTab = TABS.find(t => t.id === tab)!;
@@ -530,10 +531,34 @@ export default function SettingsForm({ settings }: { settings: any }) {
             </>
           )}
 
-          {/* ── Email ── */}
+          {/* ── SMS & Email ── */}
           {tab === "email" && (
             <>
-              <SectionHeader icon={Bell} title="Email / SMTP" desc="Configure an outgoing mail server to send billing alerts, notifications, and receipts" color="sky" />
+              {/* mNotify */}
+              <SectionHeader icon={MessageSquare} title="mNotify — SMS & Email" desc="Enter your mNotify API key to send SMS and email messages to members" color="sky" />
+              <div className="space-y-4">
+                <FieldGroup label="mNotify API Key" hint="Get your API key from app.mnotify.com → Settings → API">
+                  <div className="relative">
+                    <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input className="input pl-9" type="password"
+                      value={form.smsApiKey}
+                      onChange={e => set("smsApiKey", e.target.value)}
+                      placeholder="Your mNotify API key"
+                    />
+                  </div>
+                </FieldGroup>
+                <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-start gap-3">
+                  <MessageSquare className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-indigo-800">How it works</p>
+                    <p className="text-xs text-indigo-600 mt-0.5">When an mNotify API key is set, all SMS messages are sent via mNotify. Emails are also sent via mNotify — SMTP below is only used as a fallback when no API key is set.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 my-6" />
+
+              <SectionHeader icon={Bell} title="Email / SMTP (Fallback)" desc="Used only if no mNotify API key is set above" color="sky" />
               <div className="space-y-4">
                 <FieldGroup label="SMTP Host">
                   <div className="relative">

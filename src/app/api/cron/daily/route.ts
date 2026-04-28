@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
 import { generateInvoiceNumber } from "@/lib/utils";
+import { sendSms, sendEmail as mnotifyEmail } from "@/lib/mnotify";
 
 // GET /api/cron/daily  — run once per day at 7am
 export async function GET(req: NextRequest) {
@@ -38,10 +39,20 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  async function sendEmail(to: string, subject: string, html: string) {
-    if (!transporter || !to) return;
+  async function sendEmail(to: string, subject: string, html: string, text?: string) {
+    if (!to) return;
+    if (settings?.smsApiKey) {
+      mnotifyEmail(settings.smsApiKey, [to], subject, html, text ?? html, gymName).catch(() => {});
+      return;
+    }
+    if (!transporter) return;
     try { await transporter!.sendMail({ from: `"${gymName}" <${settings!.smtpUser}>`, to, subject, html }); }
     catch { /* silent */ }
+  }
+
+  async function sendSmsFn(to: string | null | undefined, message: string) {
+    if (!to || !settings?.smsApiKey) return;
+    sendSms(settings.smsApiKey, [to], message, gymName).catch(() => {});
   }
 
   // ─── 1. MARK OVERDUE INVOICES AS FAILED ─────────────────────────────────────

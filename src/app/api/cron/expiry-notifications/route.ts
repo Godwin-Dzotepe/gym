@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
+import { sendSms, sendEmail as mnotifyEmail } from "@/lib/mnotify";
 
-// Called by a scheduler (e.g. cron job, Vercel Cron, or external ping).
-// Safe to call multiple times per day — tracks sent state to avoid duplicates.
 export async function GET(req: NextRequest) {
   const secret = req.headers.get("x-cron-secret");
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
@@ -32,10 +31,11 @@ export async function GET(req: NextRequest) {
 
   const gymName = settings.gymName;
   const emailTemplate = settings.expiryNotifEmailTemplate ?? "Hi {name}, your membership at {gym} expires in {days} day(s) on {date}. Please renew to keep access.";
+  const smsTemplate   = settings.expiryNotifSmsTemplate   ?? "Hi {name}, your {gym} membership expires in {days} day(s) on {date}. Renew now to stay active.";
 
-  // Build SMTP transporter once if email notifications are enabled
+  // SMTP transporter — fallback only when no mNotify key
   let transporter: nodemailer.Transporter | null = null;
-  if (settings.expiryNotifEmail && settings.smtpHost && settings.smtpUser && settings.smtpPass) {
+  if (!settings.smsApiKey && settings.expiryNotifEmail && settings.smtpHost && settings.smtpUser && settings.smtpPass) {
     transporter = nodemailer.createTransport({
       host: settings.smtpHost,
       port: settings.smtpPort ?? 587,
@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
 
   let sent = 0;
   let emailsSent = 0;
+  let smsSent = 0;
 
   for (const mp of expiringPlans) {
     if (!mp.endDate) continue;
@@ -66,9 +67,7 @@ export async function GET(req: NextRequest) {
 
     const alreadySent = await prisma.notification.findFirst({
       where: {
-        memberId: member.id,
-        type: "EXPIRY_REMINDER",
-        createdAt: { gte: today },
+        memberId: member.id, type: "EXPIRY_REMINDER", createdAt: { gte: today },
         message: { contains: `${daysLeft} day` },
       },
     });
@@ -78,33 +77,39 @@ export async function GET(req: NextRequest) {
     const vars: Record<string, string> = { name: member.firstName, gym: gymName, days: String(daysLeft), date: dateStr, plan: mp.plan.name };
     const interpolate = (tpl: string) => tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`);
 
-    const expiredTemplate = `Hi {name}, your {gym} membership ({plan}) has expired today. Please renew to regain access.`;
-    const title = daysLeft === 0 ? "Membership Expired" : `Membership Expiring in ${daysLeft} Day${daysLeft === 1 ? "" : "s"}`;
-    const message = interpolate(daysLeft === 0 ? expiredTemplate : emailTemplate);
+    const expiredTpl = `Hi {name}, your {gym} membership ({plan}) has expired today. Please renew to regain access.`;
+    const title   = daysLeft === 0 ? "Membership Expired" : `Membership Expiring in ${daysLeft} Day${daysLeft === 1 ? "" : "s"}`;
+    const message = interpolate(daysLeft === 0 ? expiredTpl : emailTemplate);
+    const smsMsg  = interpolate(daysLeft === 0 ? expiredTpl  : smsTemplate);
+    const subject = daysLeft === 0
+      ? `Your ${gymName} membership has expired`
+      : `Your ${gymName} membership expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
 
     await prisma.notification.create({
       data: { memberId: member.id, type: "EXPIRY_REMINDER", title, message, link: `/dashboard/members/${member.id}` },
     });
 
-    // Send email
-    if (transporter && member.email) {
-      try {
-        const subject = daysLeft === 0 ? `Your ${gymName} membership has expired` : `Your ${gymName} membership expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
-        await transporter.sendMail({
-          from: `"${gymName}" <${settings.smtpUser}>`,
-          to: member.email,
-          subject,
-          html: `<p>${message.replace(/\n/g, "<br/>")}</p>`,
-          text: message,
-        });
-        emailsSent++;
-      } catch {
-        // Log silently — don't let one bad email abort the whole batch
+    // Email — prefer mNotify, fall back to SMTP
+    if (settings.expiryNotifEmail && member.email) {
+      const html = `<p>${message.replace(/\n/g, "<br/>")}</p>`;
+      if (settings.smsApiKey) {
+        await mnotifyEmail(settings.smsApiKey, [member.email], subject, html, message, gymName).catch(() => {});
+      } else if (transporter) {
+        try {
+          await transporter.sendMail({ from: `"${gymName}" <${settings.smtpUser}>`, to: member.email, subject, html, text: message });
+        } catch { /* silent */ }
       }
+      emailsSent++;
+    }
+
+    // SMS via mNotify
+    if (settings.expiryNotifSms && settings.smsApiKey && member.phone) {
+      await sendSms(settings.smsApiKey, [member.phone], smsMsg, gymName).catch(() => {});
+      smsSent++;
     }
 
     sent++;
   }
 
-  return NextResponse.json({ ok: true, processed: expiringPlans.length, sent, emailsSent });
+  return NextResponse.json({ ok: true, processed: expiringPlans.length, sent, emailsSent, smsSent });
 }
