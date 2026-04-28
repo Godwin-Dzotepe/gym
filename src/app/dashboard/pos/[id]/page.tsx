@@ -20,6 +20,7 @@ export default async function POSSaleReceiptPage({ params }: Props) {
     },
   });
 
+
   if (!sale) notFound();
 
   const [settings, currency] = await Promise.all([
@@ -105,6 +106,8 @@ export default async function POSSaleReceiptPage({ params }: Props) {
                       {sale.member.phone && <p className="text-sm text-gray-500">{sale.member.phone}</p>}
                       <p className="text-xs text-gray-400 font-mono mt-1">{sale.member.memberNumber}</p>
                     </>
+                  ) : (sale as any).customerName ? (
+                    <p className="text-base font-bold text-gray-900">{(sale as any).customerName}</p>
                   ) : (
                     <p className="text-base font-bold text-gray-500 italic">Walk-in Customer</p>
                   )}
