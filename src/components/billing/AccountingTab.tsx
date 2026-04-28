@@ -24,9 +24,15 @@ const PERIODS: { key: Period; label: string }[] = [
   { key: "custom",       label: "Custom Range" },
 ];
 
-function toLocalDateStr(d: Date) {
-  // Returns YYYY-MM-DD in local time (for <input type="date">)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function toReadableDateStr(d: Date) {
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  // e.g. "01 Jan 2026"
+}
+
+function parseDate(str: string): Date | null {
+  if (!str.trim()) return null;
+  const d = new Date(str.trim());
+  return isNaN(d.getTime()) ? null : d;
 }
 
 function getPeriodRange(period: Period): { start: Date; end: Date } {
@@ -80,9 +86,10 @@ export default function AccountingTab() {
   // Initialise to "this_year" by default
   const [activePeriod, setActivePeriod]   = useState<Period>("this_year");
   const [rangeLabel, setRangeLabel]       = useState("");
-  const [customStart, setCustomStart]     = useState(toLocalDateStr(new Date(new Date().getFullYear(), 0, 1)));
-  const [customEnd, setCustomEnd]         = useState(toLocalDateStr(new Date()));
+  const [customStart, setCustomStart]     = useState(toReadableDateStr(new Date(new Date().getFullYear(), 0, 1)));
+  const [customEnd, setCustomEnd]         = useState(toReadableDateStr(new Date()));
   const [showCustom, setShowCustom]       = useState(false);
+  const [customError, setCustomError]     = useState("");
 
   const fetchData = useCallback((start: Date, end: Date) => {
     setLoading(true);
@@ -106,10 +113,12 @@ export default function AccountingTab() {
   }, [fetchData]);
 
   const applyCustom = useCallback(() => {
-    if (!customStart || !customEnd) return;
-    const start = new Date(customStart);
-    const end   = new Date(customEnd);
-    if (start > end) return;
+    setCustomError("");
+    const start = parseDate(customStart);
+    const end   = parseDate(customEnd);
+    if (!start) { setCustomError("Enter a valid start date — e.g. 01 Jan 2026"); return; }
+    if (!end)   { setCustomError("Enter a valid end date — e.g. 30 Apr 2026");   return; }
+    if (start > end) { setCustomError("Start date must be before end date"); return; }
     setRangeLabel(formatRangeLabel("custom", start, end));
     fetchData(start, end);
   }, [customStart, customEnd, fetchData]);
@@ -157,29 +166,37 @@ export default function AccountingTab() {
 
         {/* Custom range picker */}
         {showCustom && (
-          <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
-            <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="date"
-                className="input text-sm py-1.5 px-3 w-auto"
-                value={customStart}
-                onChange={e => setCustomStart(e.target.value)}
-              />
-              <span className="text-gray-400 text-sm">to</span>
-              <input
-                type="date"
-                className="input text-sm py-1.5 px-3 w-auto"
-                value={customEnd}
-                onChange={e => setCustomEnd(e.target.value)}
-              />
-              <button
-                onClick={applyCustom}
-                disabled={!customStart || !customEnd}
-                className="btn-primary text-sm py-1.5 px-4">
-                Apply
-              </button>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <div className="flex flex-wrap items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  className="input text-sm py-1.5 px-3 flex-1 min-w-[130px]"
+                  placeholder="e.g. 01 Jan 2026"
+                  value={customStart}
+                  onChange={e => { setCustomStart(e.target.value); setCustomError(""); }}
+                  onKeyDown={e => e.key === "Enter" && applyCustom()}
+                />
+                <span className="text-gray-400 text-sm">to</span>
+                <input
+                  type="text"
+                  className="input text-sm py-1.5 px-3 flex-1 min-w-[130px]"
+                  placeholder="e.g. 30 Apr 2026"
+                  value={customEnd}
+                  onChange={e => { setCustomEnd(e.target.value); setCustomError(""); }}
+                  onKeyDown={e => e.key === "Enter" && applyCustom()}
+                />
+                <button
+                  onClick={applyCustom}
+                  className="btn-primary text-sm py-1.5 px-4 flex-shrink-0">
+                  Apply
+                </button>
+              </div>
             </div>
+            {customError && (
+              <p className="text-xs text-red-500 pl-1">{customError}</p>
+            )}
           </div>
         )}
       </div>
