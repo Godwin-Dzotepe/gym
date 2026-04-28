@@ -6,7 +6,7 @@ import {
   Zap, Mail, Phone, MapPin, Globe, Clock, BadgePercent,
   AlarmClock, Shield, Eye, UserCog, QrCode, Trophy,
   GitBranch, ShoppingBag, DoorOpen, Video, ChevronRight,
-  BellRing, MessageSquare, Send, Upload, Search,
+  BellRing, MessageSquare, Send, Upload, Search, Wallet,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import Image from "next/image";
@@ -125,6 +125,12 @@ export default function SettingsForm({ settings }: { settings: any }) {
     expiryNotifSms:            settings?.expiryNotifSms            ?? false,
     expiryNotifEmailTemplate:  settings?.expiryNotifEmailTemplate  ?? "Hi {name}, your membership at {gym} expires in {days} day(s) on {date}. Please renew to keep access.",
     expiryNotifSmsTemplate:    settings?.expiryNotifSmsTemplate    ?? "Hi {name}, your {gym} membership expires in {days} day(s) on {date}. Renew now to stay active.",
+    paymentPhone:         settings?.paymentPhone         ?? "",
+    paymentAccountName:   settings?.paymentAccountName   ?? "",
+    paymentAccountNumber: settings?.paymentAccountNumber ?? "",
+    paymentBankName:      settings?.paymentBankName      ?? "",
+    paymentType:          settings?.paymentType          ?? "MOMO",
+    paymentInstructions:  settings?.paymentInstructions  ?? "",
   });
 
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
@@ -167,12 +173,13 @@ export default function SettingsForm({ settings }: { settings: any }) {
     : TIMEZONES;
 
   const TABS = [
-    { id: "gym",      label: "Gym Profile",    icon: Building2,  color: "indigo" },
-    { id: "portal",   label: "Member Portal",  icon: Users,      color: "emerald" },
-    { id: "billing",  label: "Billing",        icon: CreditCard, color: "violet" },
-    { id: "features", label: "Features",       icon: Zap,        color: "orange" },
+    { id: "gym",      label: "Gym Profile",    icon: Building2,    color: "indigo" },
+    { id: "portal",   label: "Member Portal",  icon: Users,        color: "emerald" },
+    { id: "billing",  label: "Billing",        icon: CreditCard,   color: "violet" },
+    { id: "payment",  label: "Payment",        icon: Wallet,       color: "amber" },
+    { id: "features", label: "Features",       icon: Zap,          color: "orange" },
     { id: "notifications", label: "Notifications", icon: BellRing, color: "rose" },
-    { id: "email",    label: "SMS & Email",     icon: MessageSquare, color: "sky" },
+    { id: "email",    label: "SMS & Email",    icon: MessageSquare, color: "sky" },
   ];
 
   const activeTab = TABS.find(t => t.id === tab)!;
@@ -597,6 +604,122 @@ export default function SettingsForm({ settings }: { settings: any }) {
                   </button>
                   <p className="text-xs text-gray-400">Sends a test message to <span className="font-medium text-gray-600">{form.email || form.smtpUser || "your contact email"}</span></p>
                 </div>
+              </div>
+            </>
+          )}
+
+          {/* ── Payment Methods ── */}
+          {tab === "payment" && (
+            <>
+              <SectionHeader icon={Wallet} title="Payment Collection" desc="Configure how members pay when registering. These details are shown on the registration page." color="amber" />
+              <div className="space-y-5">
+
+                <FieldGroup label="Payment Type">
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "MOMO",  label: "Mobile Money" },
+                      { value: "BANK",  label: "Bank Transfer" },
+                      { value: "BOTH",  label: "Both" },
+                    ].map(opt => (
+                      <button key={opt.value} type="button"
+                        onClick={() => set("paymentType", opt.value)}
+                        className={`py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
+                          form.paymentType === opt.value
+                            ? "border-amber-400 bg-amber-50 text-amber-700"
+                            : "border-gray-200 text-gray-500 hover:border-gray-300"
+                        }`}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </FieldGroup>
+
+                {(form.paymentType === "MOMO" || form.paymentType === "BOTH") && (
+                  <div className="border border-amber-100 bg-amber-50/40 rounded-2xl p-5 space-y-4">
+                    <p className="text-sm font-semibold text-amber-700">Mobile Money Details</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FieldGroup label="MoMo Number / Phone">
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input className="input pl-9" value={form.paymentPhone}
+                            onChange={e => set("paymentPhone", e.target.value)}
+                            placeholder="024 000 0000" />
+                        </div>
+                      </FieldGroup>
+                      <FieldGroup label="Account Name">
+                        <input className="input" value={form.paymentAccountName}
+                          onChange={e => set("paymentAccountName", e.target.value)}
+                          placeholder="John Doe" />
+                      </FieldGroup>
+                    </div>
+                  </div>
+                )}
+
+                {(form.paymentType === "BANK" || form.paymentType === "BOTH") && (
+                  <div className="border border-blue-100 bg-blue-50/40 rounded-2xl p-5 space-y-4">
+                    <p className="text-sm font-semibold text-blue-700">Bank Transfer Details</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FieldGroup label="Bank Name">
+                        <input className="input" value={form.paymentBankName}
+                          onChange={e => set("paymentBankName", e.target.value)}
+                          placeholder="e.g. GCB Bank" />
+                      </FieldGroup>
+                      <FieldGroup label="Account Number">
+                        <input className="input" value={form.paymentAccountNumber}
+                          onChange={e => set("paymentAccountNumber", e.target.value)}
+                          placeholder="1234567890" />
+                      </FieldGroup>
+                      <FieldGroup label="Account Name">
+                        <input className="input" value={form.paymentAccountName}
+                          onChange={e => set("paymentAccountName", e.target.value)}
+                          placeholder="John Doe" />
+                      </FieldGroup>
+                    </div>
+                  </div>
+                )}
+
+                <FieldGroup label="Payment Instructions" hint="Shown to members during registration. Explain what to do after paying.">
+                  <textarea className="input resize-none" rows={4}
+                    value={form.paymentInstructions}
+                    onChange={e => set("paymentInstructions", e.target.value)}
+                    placeholder="e.g. Send payment to the MoMo number above, then enter your transaction ID below. Your account will be activated after the admin confirms your payment." />
+                </FieldGroup>
+
+                {/* Preview */}
+                {(form.paymentPhone || form.paymentAccountNumber || form.paymentInstructions) && (
+                  <div className="border-2 border-dashed border-amber-200 rounded-2xl p-4">
+                    <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-3">Preview (how members will see it)</p>
+                    <div className="bg-white rounded-xl p-4 space-y-3 border border-amber-100">
+                      {form.paymentPhone && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">MoMo Number</span>
+                          <span className="text-sm font-bold text-gray-900">{form.paymentPhone}</span>
+                        </div>
+                      )}
+                      {form.paymentAccountName && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Account Name</span>
+                          <span className="text-sm font-semibold text-gray-700">{form.paymentAccountName}</span>
+                        </div>
+                      )}
+                      {form.paymentBankName && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Bank</span>
+                          <span className="text-sm font-semibold text-gray-700">{form.paymentBankName}</span>
+                        </div>
+                      )}
+                      {form.paymentAccountNumber && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Account Number</span>
+                          <span className="text-sm font-mono font-bold text-gray-900">{form.paymentAccountNumber}</span>
+                        </div>
+                      )}
+                      {form.paymentInstructions && (
+                        <p className="text-xs text-gray-500 pt-2 border-t border-gray-100">{form.paymentInstructions}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}

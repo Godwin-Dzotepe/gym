@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Loader2, CheckCircle, ChevronRight, ChevronLeft,
-  User, Lock, Dumbbell, CreditCard, ShieldCheck,
+  User, Lock, Dumbbell, CreditCard, ShieldCheck, Hash, Phone, Building2, Copy,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -24,12 +24,14 @@ const CYCLE_LABELS: Record<string, string> = {
 const CYCLE_PER: Record<string, string> = {
   DAILY: "/day", WEEKLY: "/week", MONTHLY: "/month", YEARLY: "/year",
 };
-const PAYMENT_METHODS = [
-  { value: "CASH",          label: "Cash",         desc: "Pay in person at the gym" },
-  { value: "BANK_TRANSFER", label: "Bank Transfer", desc: "Transfer to our account" },
-  { value: "CARD",          label: "Card",          desc: "Debit or credit card at gym" },
-  { value: "MANUAL",        label: "Other",         desc: "Discuss with gym admin" },
-];
+interface PaymentSettings {
+  paymentPhone: string | null;
+  paymentAccountName: string | null;
+  paymentAccountNumber: string | null;
+  paymentBankName: string | null;
+  paymentType: string | null;
+  paymentInstructions: string | null;
+}
 
 interface Plan {
   id: string; name: string; description: string | null; isActive: boolean;
@@ -55,8 +57,10 @@ export default function RegisterPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [selectedCycle, setSelectedCycle] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [transactionId, setTransactionId] = useState("");
   const [waiverAccepted, setWaiverAccepted] = useState(false);
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     firstName: "", lastName: "", email: "", phone: "",
@@ -73,7 +77,18 @@ export default function RegisterPage() {
         setPlans(arr.filter((p: Plan) => p.isActive !== false));
       })
       .catch(() => {});
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then((data: any) => setPaymentSettings(data))
+      .catch(() => {});
   }, []);
+
+  function copyToClipboard(text: string, key: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(key);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  }
 
   function set(field: string, value: any) {
     setForm(p => ({ ...p, [field]: value }));
@@ -126,7 +141,7 @@ export default function RegisterPage() {
         waiverAccepted,
         planId: selectedPlanId || undefined,
         billingCycle: selectedCycle || undefined,
-        paymentMethod,
+        transactionId: transactionId || undefined,
       }),
     });
     const data = await res.json();
@@ -176,8 +191,28 @@ export default function RegisterPage() {
                 {selectedPlan && (
                   <p className="text-gray-400">✓ Plan: <span className="text-white">{selectedPlan.name} — {CYCLE_LABELS[selectedCycle]}</span></p>
                 )}
-                <p className="text-gray-400">⏳ Awaiting admin approval &amp; payment</p>
+                <p className="text-gray-400">⏳ Awaiting admin approval</p>
               </div>
+
+              {/* Transaction ID — non-deletable confirmation block */}
+              {transactionId && (
+                <div className="bg-orange-500/10 border-2 border-orange-400/40 rounded-xl p-4">
+                  <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-2">Payment Reference — Do Not Lose</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                      <Hash className="w-4 h-4 text-orange-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Transaction ID</p>
+                      <p className="text-base font-mono font-bold text-white">{transactionId}</p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-orange-300/70 mt-3 leading-relaxed">
+                    📸 Screenshot this page. Your transaction ID is your proof of payment and will be verified at the front desk when you visit the gym.
+                  </p>
+                </div>
+              )}
+
               <Link href="/login" className="block w-full py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition text-center">
                 Back to Login
               </Link>
@@ -389,9 +424,10 @@ export default function RegisterPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="mb-1">
                     <p className="text-sm font-semibold text-white">Payment &amp; Confirmation</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Review your order and sign the waiver to complete sign-up</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Make your payment using the details below, then enter your transaction ID</p>
                   </div>
 
+                  {/* Order summary */}
                   {selectedPlan && (
                     <div className="bg-white/5 border border-white/15 rounded-2xl p-4">
                       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Order Summary</p>
@@ -408,24 +444,88 @@ export default function RegisterPage() {
                     </div>
                   )}
 
-                  <div>
-                    <p className={LABEL}>How will you pay?</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {PAYMENT_METHODS.map(m => (
-                        <button key={m.value} type="button"
-                          onClick={() => setPaymentMethod(m.value)}
-                          className={`rounded-xl border-2 p-3 text-left transition-all ${
-                            paymentMethod === m.value
-                              ? "border-orange-400 bg-orange-500/10"
-                              : "border-white/15 bg-white/5 hover:border-white/30"
-                          }`}>
-                          <p className="text-xs font-semibold text-white">{m.label}</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">{m.desc}</p>
-                        </button>
-                      ))}
+                  {/* Payment details from admin settings */}
+                  {paymentSettings && (paymentSettings.paymentPhone || paymentSettings.paymentAccountNumber) ? (
+                    <div className="rounded-2xl border border-orange-400/30 bg-orange-500/5 overflow-hidden">
+                      <div className="px-4 py-3 bg-orange-500/10 border-b border-orange-400/20">
+                        <p className="text-xs font-bold text-orange-300 uppercase tracking-wider">Payment Details</p>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        {paymentSettings.paymentPhone && (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Phone className="w-3.5 h-3.5 text-orange-400" />
+                              <span className="text-xs text-gray-400">MoMo Number</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-white">{paymentSettings.paymentPhone}</span>
+                              <button type="button" onClick={() => copyToClipboard(paymentSettings.paymentPhone!, "phone")}
+                                className="text-gray-500 hover:text-orange-400 transition-colors">
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                              {copied === "phone" && <span className="text-[10px] text-orange-400">Copied!</span>}
+                            </div>
+                          </div>
+                        )}
+                        {paymentSettings.paymentAccountName && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-400">Account Name</span>
+                            <span className="text-sm font-semibold text-white">{paymentSettings.paymentAccountName}</span>
+                          </div>
+                        )}
+                        {paymentSettings.paymentBankName && (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-3.5 h-3.5 text-orange-400" />
+                              <span className="text-xs text-gray-400">Bank</span>
+                            </div>
+                            <span className="text-sm font-semibold text-white">{paymentSettings.paymentBankName}</span>
+                          </div>
+                        )}
+                        {paymentSettings.paymentAccountNumber && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-400">Account Number</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-mono font-bold text-white">{paymentSettings.paymentAccountNumber}</span>
+                              <button type="button" onClick={() => copyToClipboard(paymentSettings.paymentAccountNumber!, "acc")}
+                                className="text-gray-500 hover:text-orange-400 transition-colors">
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                              {copied === "acc" && <span className="text-[10px] text-orange-400">Copied!</span>}
+                            </div>
+                          </div>
+                        )}
+                        {paymentSettings.paymentInstructions && (
+                          <p className="text-xs text-orange-200/70 border-t border-orange-400/20 pt-3 mt-1 leading-relaxed">
+                            {paymentSettings.paymentInstructions}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                  ) : (
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+                      <p className="text-sm text-gray-400">Payment details not configured yet.</p>
+                      <p className="text-xs text-gray-500 mt-1">Please contact the gym directly to arrange payment.</p>
+                    </div>
+                  )}
+
+                  {/* Transaction ID */}
+                  <div>
+                    <label className={LABEL}>Transaction ID <span className="text-orange-400">*</span></label>
+                    <div className="relative">
+                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      <input
+                        className={INPUT + " pl-9"}
+                        placeholder="Enter your payment transaction ID"
+                        value={transactionId}
+                        onChange={e => setTransactionId(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1">This is shown on your payment receipt or confirmation SMS. Keep it as proof of payment.</p>
                   </div>
 
+                  {/* Waiver */}
                   <div>
                     <p className={LABEL}>Liability Waiver</p>
                     <div className="bg-black/20 border border-white/10 rounded-xl p-4 max-h-36 overflow-y-auto text-xs text-gray-400 leading-relaxed space-y-2 mb-3">
@@ -448,7 +548,7 @@ export default function RegisterPage() {
                   <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 flex gap-2.5">
                     <ShieldCheck className="w-4 h-4 text-orange-400 flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-orange-300/80 leading-relaxed">
-                      Your account will be <strong className="text-orange-300">reviewed and activated by the gym admin</strong> after payment is confirmed. An invoice will be generated — bring your payment to the gym.
+                      Your account will be <strong className="text-orange-300">reviewed and activated by the gym admin</strong> after your payment is confirmed. You will receive a message when approved.
                     </p>
                   </div>
 
@@ -456,7 +556,7 @@ export default function RegisterPage() {
                     <button type="button" onClick={back} className="flex-1 py-2.5 bg-white/10 hover:bg-white/15 text-white text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2">
                       <ChevronLeft className="w-4 h-4" /> Back
                     </button>
-                    <button type="submit" disabled={loading || !waiverAccepted}
+                    <button type="submit" disabled={loading || !waiverAccepted || !transactionId.trim()}
                       className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2">
                       {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                       {loading ? "Submitting…" : "Complete Registration"}

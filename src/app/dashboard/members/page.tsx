@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { UserPlus, Search, Mail, Download } from "lucide-react";
+import { UserPlus, Search, Mail, Download, Clock } from "lucide-react";
 import MembersTable from "@/components/members/MembersTable";
 import MembersToolbar from "./MembersToolbar";
 
@@ -58,8 +58,9 @@ export default async function MembersPage({ searchParams }: Props) {
 
   const statusCounts = Object.fromEntries(counts.map(c => [c.status, c._count]));
 
+  const pendingCount = statusCounts.PENDING ?? 0;
   const TABS = [
-    { key: "members", label: "Members", count: (statusCounts.ACTIVE ?? 0) + (statusCounts.PENDING ?? 0) + (statusCounts.FROZEN ?? 0) },
+    { key: "members", label: "Members", count: (statusCounts.ACTIVE ?? 0) + pendingCount + (statusCounts.FROZEN ?? 0) },
     { key: "visitors", label: "Visitors", count: null },
     { key: "frozen", label: "Frozen", count: statusCounts.FROZEN ?? 0 },
   ];
@@ -80,6 +81,12 @@ export default async function MembersPage({ searchParams }: Props) {
           <p className="text-gray-500 text-sm mt-1">{total.toLocaleString()} total</p>
         </div>
         <div className="flex gap-2">
+          {pendingCount > 0 && (
+            <Link href="/dashboard/members/pending"
+              className="btn-secondary text-sm bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100">
+              <Clock className="w-4 h-4" /> {pendingCount} Pending
+            </Link>
+          )}
           <button className="btn-secondary text-sm"><Mail className="w-4 h-4" /> Invite</button>
           <a href="/api/members/export" className="btn-secondary text-sm">
             <Download className="w-4 h-4" /> Export CSV

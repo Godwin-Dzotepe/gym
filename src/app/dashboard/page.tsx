@@ -103,7 +103,7 @@ export default async function DashboardPage() {
                 <p className="text-sm font-semibold text-yellow-800">{s.pendingMembers} Pending Registration{s.pendingMembers > 1 ? "s" : ""}</p>
                 <p className="text-xs text-yellow-700 mt-0.5">New members awaiting account activation.</p>
               </div>
-              <Link href="/dashboard/members?status=PENDING" className="text-xs font-semibold text-yellow-700 hover:text-yellow-800 whitespace-nowrap">
+              <Link href="/dashboard/members/pending" className="text-xs font-semibold text-yellow-700 hover:text-yellow-800 whitespace-nowrap">
                 Review →
               </Link>
             </div>

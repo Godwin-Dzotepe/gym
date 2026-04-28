@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     const {
       firstName, lastName, email, phone, dateOfBirth, gender,
       address, emergencyName, emergencyPhone, password, waiverAccepted,
-      planId, billingCycle, paymentMethod,
+      planId, billingCycle, transactionId,
     } = body;
 
     if (!firstName || !lastName || !email || !password) {
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
               startDate: new Date(),
               endDate,
               nextBillingDate,
-              paymentMethod: (paymentMethod ?? "CASH") as any,
+              paymentMethod: "MANUAL" as any,
               isActive: true,
             },
           });
@@ -105,7 +105,8 @@ export async function POST(req: NextRequest) {
                 discount: 0,
                 tax: 0,
                 total: price,
-                paymentMethod: (paymentMethod ?? "CASH") as any,
+                paymentMethod: "MANUAL" as any,
+                transactionId: transactionId || null,
                 dueDate: new Date(),
                 status: "PENDING",
               },

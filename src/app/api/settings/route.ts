@@ -48,6 +48,12 @@ export async function POST(req: NextRequest) {
     expiryNotifSms: body.expiryNotifSms ?? false,
     expiryNotifEmailTemplate: body.expiryNotifEmailTemplate || null,
     expiryNotifSmsTemplate: body.expiryNotifSmsTemplate || null,
+    paymentPhone: body.paymentPhone || null,
+    paymentAccountName: body.paymentAccountName || null,
+    paymentAccountNumber: body.paymentAccountNumber || null,
+    paymentBankName: body.paymentBankName || null,
+    paymentType: body.paymentType || null,
+    paymentInstructions: body.paymentInstructions || null,
   };
 
   const settings = await prisma.gymSettings.upsert({

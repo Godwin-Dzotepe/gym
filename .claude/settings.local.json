@@ -15,7 +15,27 @@
       "Bash(cp:*)",
       "Bash(curl -s -X POST http://localhost:3000/api/plans -H \"Content-Type: application/json\" -d '{\"name\":\"Test\",\"price\":\"100\",\"planType\":\"RECURRING\"}')",
       "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\('next:', p.dependencies.next, 'next-auth:', p.dependencies['next-auth']\\)\")",
-      "Bash(curl -s http://localhost:3000/api/plans)"
+      "Bash(curl -s http://localhost:3000/api/plans)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git config *)",
+      "Bash(git push *)",
+      "Bash(sed -i 's/?? \"QYM\"/?? \"Oracle Gym\"/g' c:/xampp/htdocs/qym-app/src/app/api/cron/daily/route.ts c:/xampp/htdocs/qym-app/src/app/api/cron/hourly/route.ts)",
+      "Bash(sed -i 's/from QYM/from Oracle Gym/g' c:/xampp/htdocs/qym-app/src/components/messages/MassMessageComposer.tsx)",
+      "Bash(node -e ' *)",
+      "Bash(grep -rn '\"\\\\\\\\$\"\\\\|>\\\\\\\\$<' c:/xampp/htdocs/qym-app/src --include=\"*.tsx\")",
+      "Bash(curl -L \"https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1080&q=80\" -o \"c:/xampp/htdocs/qym-app/public/slides/gym-1.jpg\")",
+      "Bash(curl -L \"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=1080&q=80\" -o \"c:/xampp/htdocs/qym-app/public/slides/gym-2.jpg\")",
+      "Bash(curl -L \"https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?auto=format&fit=crop&w=1080&q=80\" -o \"c:/xampp/htdocs/qym-app/public/slides/gym-3.jpg\")",
+      "Bash(curl -L \"https://images.unsplash.com/photo-1548690312-e3b507d8c110?auto=format&fit=crop&w=1080&q=80\" -o \"c:/xampp/htdocs/qym-app/public/slides/gym-4.jpg\")",
+      "WebSearch",
+      "WebFetch(domain:pixabay.com)",
+      "WebFetch(domain:www.pexels.com)",
+      "WebFetch(domain:coverr.co)",
+      "WebFetch(domain:www.videezy.com)",
+      "Bash(curl -sI \"https://videos.pexels.com/video-files/6390391/6390391-hd_1920_1080_25fps.mp4\")",
+      "Bash(curl -sI \"https://videos.pexels.com/video-files/6390391/6390391-uhd_2560_1440_25fps.mp4\")",
+      "Bash(curl -L \"https://videos.pexels.com/video-files/6390391/6390391-hd_1920_1080_25fps.mp4\" -o \"c:/xampp/htdocs/qym-app/public/gym-bg.mp4\")"
     ]
   }
 }

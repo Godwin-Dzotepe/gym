@@ -206,6 +206,13 @@ model GymSettings {
   taxRate                     Decimal   @default(0) @db.Decimal(5, 2)
   lateFeeDefault              Decimal   @default(0) @db.Decimal(10, 2)
   lateFeeAfterDays            Int       @default(5)
+  // Payment Collection Settings
+  paymentPhone                String?
+  paymentAccountName          String?
+  paymentAccountNumber        String?
+  paymentBankName             String?
+  paymentType                 String?
+  paymentInstructions         String?   @db.Text
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
 }
