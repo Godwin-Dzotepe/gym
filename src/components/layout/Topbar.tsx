@@ -3,6 +3,7 @@
 import { Bell, Search, ChevronDown, ExternalLink, Plus, CheckCheck } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import Image from "next/image";
 import { getInitials, formatRelativeTime } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 
@@ -48,6 +49,17 @@ export default function Topbar() {
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center px-5 gap-4 flex-shrink-0 z-10">
+      {/* Logo + Name */}
+      <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0 mr-2">
+        <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-orange-400/70 shadow shadow-orange-500/20 flex-shrink-0">
+          <Image src="/gym-logo.png" alt="Oracle Gym" width={32} height={32} className="object-cover w-full h-full" />
+        </div>
+        <div className="hidden xl:block leading-none">
+          <p className="text-slate-800 font-black text-sm tracking-wide leading-none">THE ORACLE</p>
+          <p className="text-orange-500 text-[9px] font-bold tracking-widest uppercase mt-0.5">GYM</p>
+        </div>
+      </Link>
+
       {/* Search */}
       <div className="flex-1 max-w-xs">
         <div className="relative">

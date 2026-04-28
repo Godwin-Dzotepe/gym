@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const results = { classRemindersSent: 0 };
 
   const settings = await prisma.gymSettings.findFirst();
-  const gymName = settings?.gymName ?? "QYM";
+  const gymName = settings?.gymName ?? "Oracle Gym";
 
   let transporter: nodemailer.Transporter | null = null;
   if (settings?.smtpHost && settings.smtpUser && settings.smtpPass) {

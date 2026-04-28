@@ -67,7 +67,7 @@ export default function MassMessageComposer({ memberCount }: { memberCount: numb
         <div className="form-group">
           <label className="label">Subject</label>
           <input value={form.subject} onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))}
-            className="input" placeholder="Important update from QYM" />
+            className="input" placeholder="Important update from Oracle Gym" />
         </div>
       )}
 

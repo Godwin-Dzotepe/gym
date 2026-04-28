@@ -7,6 +7,10 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "The Oracle Gym — Management System",
   description: "All-in-one gym management system for The Oracle Gym",
+  icons: {
+    icon: "/gym-logo.png",
+    apple: "/gym-logo.png",
+  },
 };
 
 export const viewport: Viewport = {

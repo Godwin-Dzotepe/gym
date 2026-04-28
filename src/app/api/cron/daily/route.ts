@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   };
 
   const settings = await prisma.gymSettings.findFirst();
-  const gymName         = settings?.gymName       ?? "QYM";
+  const gymName         = settings?.gymName       ?? "Oracle Gym";
   const lateFeeAmount   = Number(settings?.lateFeeDefault   ?? 0);
   const lateFeeAfterDays = settings?.lateFeeAfterDays ?? 5;
 
