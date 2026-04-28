@@ -12,14 +12,20 @@ export default async function EditPlanPage({ params }: Props) {
   if (!plan) notFound();
 
   return (
-    <div className="space-y-5 max-w-2xl">
-      <Link href="/dashboard/billing/plans" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700">
-        <ArrowLeft className="w-3.5 h-3.5" /> Plans
+    <div className="max-w-2xl mx-auto pb-10">
+
+      <Link href="/dashboard/billing/plans"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-6 group">
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+        Back to Membership Plans
       </Link>
-      <div className="card p-6">
-        <h1 className="page-title mb-6">Edit Plan</h1>
-        <EditPlanForm plan={plan as any} />
+
+      <div className="mb-7">
+        <h1 className="page-title">Edit Membership Plan</h1>
+        <p className="text-sm text-slate-500 mt-1">Update pricing, duration, and access for <span className="font-medium text-slate-700">{plan.name}</span>.</p>
       </div>
+
+      <EditPlanForm plan={plan as any} />
     </div>
   );
 }
