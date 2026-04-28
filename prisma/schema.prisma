@@ -580,6 +580,8 @@ model Sale {
   saleNumber    String        @unique @default(cuid())
   memberId      String?
   customerName  String?
+  customerPhone String?
+  customerEmail String?
   staffId       String?
   subtotal      Decimal       @db.Decimal(10, 2)
   discount      Decimal       @default(0) @db.Decimal(10, 2)

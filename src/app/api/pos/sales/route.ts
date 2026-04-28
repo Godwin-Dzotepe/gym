@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { items, method, memberId, customerName, subtotal, tax = 0, total, transactionId, sendReceipt, notes, discountCode } = body;
+  const { items, method, memberId, customerName, customerPhone, customerEmail, subtotal, tax = 0, total, transactionId, sendReceipt, notes, discountCode } = body;
 
   const saleItems = items.map((item: any) => ({
     productId: item.productId,
@@ -33,6 +33,8 @@ export async function POST(req: NextRequest) {
       saleNumber: `SALE-${Date.now()}`,
       memberId: memberId ?? null,
       customerName: customerName ?? null,
+      customerPhone: customerPhone ?? null,
+      customerEmail: customerEmail ?? null,
       subtotal: subtotal ?? total,
       discount: 0,
       discountCode: discountCode ?? null,

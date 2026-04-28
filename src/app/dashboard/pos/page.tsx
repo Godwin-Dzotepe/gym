@@ -3,6 +3,7 @@ import { getGymCurrency } from "@/lib/currency";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { Plus, Package, ShoppingCart, TrendingUp, Download, DollarSign, BarChart2 } from "lucide-react";
+import POSShop from "@/components/pos/POSShop";
 
 interface Props {
   searchParams: Promise<{ tab?: string }>;
@@ -158,48 +159,24 @@ export default async function POSPage({ searchParams }: Props) {
         </div>
       )}
 
-      {/* Products tab */}
-      {tab === "products" && (
-        <div className="card">
-          <div className="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h2 className="font-semibold text-gray-900">Product List</h2>
-            <div className="flex gap-2">
+      {/* Products tab — full shop experience */}
+      {tab === "products" && (() => {
+        const productList = products.map(p => ({
+          id: p.id, name: p.name, price: Number(p.price), stock: p.stock, category: p.category ?? "Other",
+        }));
+        const cats = [...new Set(productList.map(p => p.category))];
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">{products.length} product{products.length !== 1 ? "s" : ""} available</p>
               <Link href="/dashboard/pos/products/new" className="btn-primary text-xs">
                 <Plus className="w-3.5 h-3.5" /> Add Product
               </Link>
             </div>
+            <POSShop products={productList} categories={cats} />
           </div>
-          <div className="overflow-x-auto"><table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 text-left">
-                <th className="table-th">Product</th>
-                <th className="table-th hidden sm:table-cell">Category</th>
-                <th className="table-th">Price</th>
-                <th className="table-th hidden sm:table-cell">In Stock</th>
-                <th className="table-th">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.length === 0 ? (
-                <tr><td colSpan={5} className="table-td text-center py-10 text-gray-400">No products yet</td></tr>
-              ) : products.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="table-td font-medium text-gray-900">{p.name}</td>
-                  <td className="table-td text-sm text-gray-500 hidden sm:table-cell">{p.category ?? "—"}</td>
-                  <td className="table-td font-semibold">{formatCurrency(Number(p.price), currency)}</td>
-                  <td className="table-td text-sm hidden sm:table-cell">{p.stock}</td>
-                  <td className="table-td">
-                    <span className={`badge ${p.isActive ? "badge-green" : "badge-gray"}`}>
-                      {p.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Report tab */}
       {tab === "report" && (
