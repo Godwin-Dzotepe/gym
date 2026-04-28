@@ -1,6 +1,6 @@
 const BASE = "https://api.mnotify.com/api";
 
-export async function sendSms(apiKey: string, recipients: string[], message: string, sender = "OracleGym") {
+export async function sendSms(apiKey: string, recipients: string[], message: string, sender = "Oracle Gym") {
   const res = await fetch(`${BASE}/sms/quick?key=${apiKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
