@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
 import { generateInvoiceNumber } from "@/lib/utils";
 import { sendSms, sendEmail as mnotifyEmail } from "@/lib/mnotify";
+import { getIntegrationConfig } from "@/lib/integration-config";
 
 // GET /api/cron/daily  — run once per day at 7am
 export async function GET(req: NextRequest) {
@@ -28,31 +29,32 @@ export async function GET(req: NextRequest) {
   const lateFeeAmount   = Number(settings?.lateFeeDefault   ?? 0);
   const lateFeeAfterDays = settings?.lateFeeAfterDays ?? 5;
 
-  // SMTP transporter (optional)
+  const cfg = getIntegrationConfig(settings);
+
+  // SMTP transporter — fallback when no mNotify key
   let transporter: nodemailer.Transporter | null = null;
-  if (settings?.smtpHost && settings.smtpUser && settings.smtpPass) {
+  if (!cfg.mnotifyKey && cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
     transporter = nodemailer.createTransport({
-      host: settings.smtpHost,
-      port: settings.smtpPort ?? 587,
-      secure: (settings.smtpPort ?? 587) === 465,
-      auth: { user: settings.smtpUser, pass: settings.smtpPass },
+      host: cfg.smtpHost, port: cfg.smtpPort,
+      secure: cfg.smtpPort === 465,
+      auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
     });
   }
 
   async function sendEmail(to: string, subject: string, html: string, text?: string) {
     if (!to) return;
-    if (settings?.smsApiKey) {
-      mnotifyEmail(settings.smsApiKey, [to], subject, html, text ?? html, gymName).catch(() => {});
+    if (cfg.mnotifyKey) {
+      mnotifyEmail(cfg.mnotifyKey, [to], subject, html, text ?? html, gymName).catch(() => {});
       return;
     }
     if (!transporter) return;
-    try { await transporter!.sendMail({ from: `"${gymName}" <${settings!.smtpUser}>`, to, subject, html }); }
+    try { await transporter!.sendMail({ from: `"${gymName}" <${cfg.smtpUser}>`, to, subject, html }); }
     catch { /* silent */ }
   }
 
   async function sendSmsFn(to: string | null | undefined, message: string) {
-    if (!to || !settings?.smsApiKey) return;
-    sendSms(settings.smsApiKey, [to], message, gymName).catch(() => {});
+    if (!to || !cfg.mnotifyKey) return;
+    sendSms(cfg.mnotifyKey, [to], message, gymName).catch(() => {});
   }
 
   // ─── 1. MARK OVERDUE INVOICES AS FAILED ─────────────────────────────────────

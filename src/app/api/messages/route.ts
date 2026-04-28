@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import nodemailer from "nodemailer";
 import { sendSms, sendEmail as mnotifyEmail } from "@/lib/mnotify";
+import { getIntegrationConfig } from "@/lib/integration-config";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -37,31 +38,28 @@ export async function POST(req: NextRequest) {
 
   const settings = await prisma.gymSettings.findFirst();
   const gymName = settings?.gymName ?? "Oracle Gym";
+  const cfg = getIntegrationConfig(settings);
 
-  if (type === "SMS" && settings?.smsApiKey) {
+  if (type === "SMS" && cfg.mnotifyKey) {
     const phones = members.map(m => m.phone).filter(Boolean) as string[];
-    if (phones.length > 0) {
-      sendSms(settings.smsApiKey, phones, body).catch(() => {});
-    }
+    if (phones.length > 0) sendSms(cfg.mnotifyKey, phones, body).catch(() => {});
   }
 
   if (type === "EMAIL") {
-    // Try mNotify email first, fall back to SMTP
-    if (settings?.smsApiKey) {
+    if (cfg.mnotifyKey) {
       const emails = members.map(m => m.email).filter(Boolean) as string[];
       const html = `<p>Hi,</p><p>${body.replace(/\n/g, "<br/>")}</p><p>— ${gymName}</p>`;
-      mnotifyEmail(settings.smsApiKey, emails, subject ?? `Message from ${gymName}`, html, body, gymName).catch(() => {});
-    } else if (settings?.smtpHost && settings.smtpUser && settings.smtpPass) {
+      mnotifyEmail(cfg.mnotifyKey, emails, subject ?? `Message from ${gymName}`, html, body, gymName).catch(() => {});
+    } else if (cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
       const transporter = nodemailer.createTransport({
-        host: settings.smtpHost,
-        port: settings.smtpPort ?? 587,
-        secure: (settings.smtpPort ?? 587) === 465,
-        auth: { user: settings.smtpUser, pass: settings.smtpPass },
+        host: cfg.smtpHost, port: cfg.smtpPort,
+        secure: cfg.smtpPort === 465,
+        auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
       });
       Promise.allSettled(
         members.map(m =>
           transporter.sendMail({
-            from: `"${gymName}" <${settings.smtpUser}>`,
+            from: `"${gymName}" <${cfg.smtpUser}>`,
             to: m.email,
             subject: subject ?? `Message from ${gymName}`,
             html: `<p>Hi ${m.firstName},</p><p>${body.replace(/\n/g, "<br/>")}</p>`,

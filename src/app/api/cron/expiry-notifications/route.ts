@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
 import { sendSms, sendEmail as mnotifyEmail } from "@/lib/mnotify";
+import { getIntegrationConfig } from "@/lib/integration-config";
 
 export async function GET(req: NextRequest) {
   const secret = req.headers.get("x-cron-secret");
@@ -33,14 +34,15 @@ export async function GET(req: NextRequest) {
   const emailTemplate = settings.expiryNotifEmailTemplate ?? "Hi {name}, your membership at {gym} expires in {days} day(s) on {date}. Please renew to keep access.";
   const smsTemplate   = settings.expiryNotifSmsTemplate   ?? "Hi {name}, your {gym} membership expires in {days} day(s) on {date}. Renew now to stay active.";
 
+  const cfg = getIntegrationConfig(settings);
+
   // SMTP transporter — fallback only when no mNotify key
   let transporter: nodemailer.Transporter | null = null;
-  if (!settings.smsApiKey && settings.expiryNotifEmail && settings.smtpHost && settings.smtpUser && settings.smtpPass) {
+  if (!cfg.mnotifyKey && settings.expiryNotifEmail && cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
     transporter = nodemailer.createTransport({
-      host: settings.smtpHost,
-      port: settings.smtpPort ?? 587,
-      secure: (settings.smtpPort ?? 587) === 465,
-      auth: { user: settings.smtpUser, pass: settings.smtpPass },
+      host: cfg.smtpHost, port: cfg.smtpPort,
+      secure: cfg.smtpPort === 465,
+      auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
     });
   }
 
@@ -92,8 +94,8 @@ export async function GET(req: NextRequest) {
     // Email — prefer mNotify, fall back to SMTP
     if (settings.expiryNotifEmail && member.email) {
       const html = `<p>${message.replace(/\n/g, "<br/>")}</p>`;
-      if (settings.smsApiKey) {
-        await mnotifyEmail(settings.smsApiKey, [member.email], subject, html, message, gymName).catch(() => {});
+      if (cfg.mnotifyKey) {
+        await mnotifyEmail(cfg.mnotifyKey, [member.email], subject, html, message, gymName).catch(() => {});
       } else if (transporter) {
         try {
           await transporter.sendMail({ from: `"${gymName}" <${settings.smtpUser}>`, to: member.email, subject, html, text: message });
@@ -103,8 +105,8 @@ export async function GET(req: NextRequest) {
     }
 
     // SMS via mNotify
-    if (settings.expiryNotifSms && settings.smsApiKey && member.phone) {
-      await sendSms(settings.smsApiKey, [member.phone], smsMsg, gymName).catch(() => {});
+    if (settings.expiryNotifSms && cfg.mnotifyKey && member.phone) {
+      await sendSms(cfg.mnotifyKey, [member.phone], smsMsg, gymName).catch(() => {});
       smsSent++;
     }
 
