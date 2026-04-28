@@ -1,9 +1,8 @@
 "use client";
 
-import { Bell, Search, ChevronDown, ExternalLink, Plus, CheckCheck } from "lucide-react";
+import { Bell, ChevronDown, ExternalLink, Plus, CheckCheck } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import Image from "next/image";
 import { getInitials, formatRelativeTime } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 
@@ -49,28 +48,7 @@ export default function Topbar() {
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center px-5 gap-4 flex-shrink-0 z-10">
-      {/* Logo + Name */}
-      <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0 mr-2">
-        <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-orange-400/70 shadow shadow-orange-500/20 flex-shrink-0">
-          <Image src="/gym-logo.png" alt="Oracle Gym" width={32} height={32} className="object-cover w-full h-full" />
-        </div>
-        <div className="hidden xl:block leading-none">
-          <p className="text-slate-800 font-black text-sm tracking-wide leading-none">THE ORACLE</p>
-          <p className="text-orange-500 text-[9px] font-bold tracking-widest uppercase mt-0.5">GYM</p>
-        </div>
-      </Link>
-
-      {/* Search */}
-      <div className="flex-1 max-w-xs">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search members..."
-            className="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent focus:bg-white transition-all placeholder:text-slate-400"
-          />
-        </div>
-      </div>
+      <div className="flex-1" />
 
       <div className="flex items-center gap-1.5 ml-auto">
         {/* Quick actions */}
