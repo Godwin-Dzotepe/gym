@@ -13,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (sessionRole === "MEMBER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
-  const { action } = await req.json(); // "APPROVE" | "DECLINE"
+  const { action } = await req.json();
 
   if (!["APPROVE", "DECLINE"].includes(action)) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -25,16 +25,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const newStatus = action === "APPROVE" ? "ACTIVE" : "CANCELLED";
   await prisma.member.update({ where: { id }, data: { status: newStatus } });
 
-  const cfg = await getIntegrationConfig();
-  const gymName = cfg.gymName ?? "Oracle Gym";
+  const settings = await prisma.gymSettings.findFirst();
+  const cfg = getIntegrationConfig(settings);
+  const gymName = settings?.gymName ?? "Oracle Gym";
 
   const approveMsg = `Hi ${member.firstName}, great news! Your membership at ${gymName} has been approved. Your member number is ${member.memberNumber}. Welcome to the family! 💪`;
   const declineMsg = `Hi ${member.firstName}, we regret to inform you that your membership application at ${gymName} could not be approved at this time. Please visit us or contact the gym for more information.`;
   const messageBody = action === "APPROVE" ? approveMsg : declineMsg;
 
   // Send SMS
-  if (member.phone && cfg.smsApiKey) {
-    await sendSms(member.phone, messageBody).catch(() => {});
+  if (member.phone && cfg.mnotifyKey) {
+    await sendSms(cfg.mnotifyKey, [member.phone], messageBody).catch(() => {});
   }
 
   // Send Email
