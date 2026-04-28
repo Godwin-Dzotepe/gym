@@ -9,22 +9,22 @@ import Image from "next/image";
 
 const SLIDES = [
   {
-    src: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1080&q=80",
+    src: "/slides/gym-1.jpg",
     quote: "Where Champions Are Made",
     sub: "Your fitness journey starts here",
   },
   {
-    src: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=1080&q=80",
+    src: "/slides/gym-2.jpg",
     quote: "Push Beyond Your Limits",
     sub: "Train hard. Stay consistent.",
   },
   {
-    src: "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?auto=format&fit=crop&w=1080&q=80",
+    src: "/slides/gym-3.jpg",
     quote: "Stronger Every Day",
     sub: "Expert trainers. Real results.",
   },
   {
-    src: "https://images.unsplash.com/photo-1548690312-e3b507d8c110?auto=format&fit=crop&w=1080&q=80",
+    src: "/slides/gym-4.jpg",
     quote: "Join The Community",
     sub: "500+ members and growing.",
   },
