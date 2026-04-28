@@ -3,9 +3,14 @@
 @media print {
   body * { visibility: hidden !important; }
   #receipt, #receipt * { visibility: visible !important; }
-  #receipt { position: fixed !important; inset: 0 !important; }
+  #receipt {
+    position: fixed !important;
+    top: 0 !important; left: 0 !important;
+    width: 4in !important;
+    max-width: 4in !important;
+  }
   .no-print { display: none !important; }
-  @page { margin: 0; size: A4; }
+  @page { margin: 0; size: 4in auto; }
 }
 
 @layer base {
