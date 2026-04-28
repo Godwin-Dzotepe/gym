@@ -12,6 +12,15 @@ export function useCurrency() {
   return useContext(CurrencyContext);
 }
 
+export function useCurrencySymbol() {
+  const currency = useCurrency();
+  return (
+    new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 0 })
+      .formatToParts(0)
+      .find(p => p.type === "currency")?.value ?? currency
+  );
+}
+
 export function useFormatCurrency() {
   const currency = useCurrency();
   return (amount: number | string) => {

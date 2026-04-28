@@ -8,6 +8,7 @@ import {
   Infinity, CalendarDays, Calendar, Users, User, CheckCircle2,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { useCurrencySymbol } from "@/components/providers/CurrencyProvider";
 
 const PLAN_TYPES = [
   { value: "RECURRING", label: "Recurring", icon: RefreshCw, desc: "Charge on a recurring schedule" },
@@ -42,8 +43,9 @@ function SectionHeader({ number, title, subtitle }: { number: number; title: str
 }
 
 export default function NewPlanPage() {
-  const router = useRouter();
-  const toast = useToast();
+  const router         = useRouter();
+  const toast          = useToast();
+  const currencySymbol = useCurrencySymbol();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
@@ -212,7 +214,7 @@ export default function NewPlanPage() {
                     <div key={f.key}>
                       <label className="label">{f.label} <span className="text-slate-400 font-normal text-[10px]">({f.hint})</span></label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{currencySymbol}</span>
                         <input className="input pl-7" type="number" min="0" step="0.01" placeholder="—"
                           value={(form as any)[f.key]} onChange={e => set(f.key, e.target.value)} />
                       </div>
@@ -254,7 +256,7 @@ export default function NewPlanPage() {
                   <div>
                     <label className="label">Sign-up Fee</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{currencySymbol}</span>
                       <input className="input pl-7" type="number" min="0" step="0.01" placeholder="0.00"
                         value={form.signUpFee} onChange={e => set("signUpFee", e.target.value)} />
                     </div>
@@ -262,7 +264,7 @@ export default function NewPlanPage() {
                   <div>
                     <label className="label">Late Fee</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{currencySymbol}</span>
                       <input className="input pl-7" type="number" min="0" step="0.01" placeholder="0.00"
                         value={form.lateFee} onChange={e => set("lateFee", e.target.value)} />
                     </div>
@@ -365,7 +367,7 @@ export default function NewPlanPage() {
                 <div>
                   <label className="label">Cancellation Fee</label>
                   <div className="relative w-44">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{currencySymbol}</span>
                     <input className="input pl-7" type="number" min="0" step="0.01" placeholder="0.00"
                       value={form.cancellationFee} onChange={e => set("cancellationFee", e.target.value)} />
                   </div>
