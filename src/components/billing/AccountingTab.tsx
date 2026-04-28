@@ -24,72 +24,64 @@ const PERIODS: { key: Period; label: string }[] = [
   { key: "custom",       label: "Custom Range" },
 ];
 
-function toReadableDateStr(d: Date) {
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-  // e.g. "01 Jan 2026"
-}
+const CUSTOM_PRESETS: { label: string; days?: number; months?: number }[] = [
+  { label: "Last 2 Days",   days: 2   },
+  { label: "Last 3 Days",   days: 3   },
+  { label: "Last 5 Days",   days: 5   },
+  { label: "Last 10 Days",  days: 10  },
+  { label: "Last 14 Days",  days: 14  },
+  { label: "Last 2 Months", months: 2 },
+  { label: "Last 3 Months", months: 3 },
+  { label: "Last 6 Months", months: 6 },
+];
 
-function parseDate(str: string): Date | null {
-  if (!str.trim()) return null;
-  const d = new Date(str.trim());
-  return isNaN(d.getTime()) ? null : d;
+function getPresetRange(preset: typeof CUSTOM_PRESETS[0]): { start: Date; end: Date } {
+  const now   = new Date();
+  const start = new Date(now);
+  if (preset.days)   start.setDate(start.getDate() - preset.days);
+  if (preset.months) start.setMonth(start.getMonth() - preset.months);
+  return { start, end: now };
 }
 
 function getPeriodRange(period: Period): { start: Date; end: Date } {
-  const now  = new Date();
+  const now   = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   switch (period) {
     case "today":
       return { start: today, end: now };
-
     case "last_week": {
-      const s = new Date(today);
-      s.setDate(today.getDate() - 6);
+      const s = new Date(today); s.setDate(today.getDate() - 6);
       return { start: s, end: now };
     }
-
     case "last_month": {
       const s = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const e = new Date(today.getFullYear(), today.getMonth(), 0);
       return { start: s, end: e };
     }
-
     case "this_quarter": {
       const q = Math.floor(today.getMonth() / 3);
-      const s = new Date(today.getFullYear(), q * 3, 1);
-      return { start: s, end: now };
+      return { start: new Date(today.getFullYear(), q * 3, 1), end: now };
     }
-
-    case "this_year": {
-      const s = new Date(today.getFullYear(), 0, 1);
-      return { start: s, end: now };
-    }
-
+    case "this_year":
+      return { start: new Date(today.getFullYear(), 0, 1), end: now };
     default:
       return { start: today, end: now };
   }
 }
 
-function formatRangeLabel(period: Period, start: Date, end: Date): string {
-  const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  if (period === "today") return `Today — ${fmt(start)}`;
-  return `${fmt(start)} — ${fmt(end)}`;
+function fmt(d: Date) {
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function AccountingTab() {
-  const formatCurrency = useFormatCurrency();
-  const [data, setData]       = useState<Accounting | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [period, setPeriod]   = useState<Period>("this_month" as Period);
-
-  // Initialise to "this_year" by default
-  const [activePeriod, setActivePeriod]   = useState<Period>("this_year");
-  const [rangeLabel, setRangeLabel]       = useState("");
-  const [customStart, setCustomStart]     = useState(toReadableDateStr(new Date(new Date().getFullYear(), 0, 1)));
-  const [customEnd, setCustomEnd]         = useState(toReadableDateStr(new Date()));
-  const [showCustom, setShowCustom]       = useState(false);
-  const [customError, setCustomError]     = useState("");
+  const formatCurrency  = useFormatCurrency();
+  const [data, setData]           = useState<Accounting | null>(null);
+  const [loading, setLoading]     = useState(false);
+  const [activePeriod, setActivePeriod] = useState<Period>("this_year");
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [rangeLabel, setRangeLabel]     = useState("");
+  const [showCustom, setShowCustom]     = useState(false);
 
   const fetchData = useCallback((start: Date, end: Date) => {
     setLoading(true);
@@ -102,31 +94,22 @@ export default function AccountingTab() {
 
   const applyPeriod = useCallback((p: Period) => {
     setActivePeriod(p);
-    if (p === "custom") {
-      setShowCustom(true);
-      return;
-    }
+    setActivePreset(null);
+    if (p === "custom") { setShowCustom(true); return; }
     setShowCustom(false);
     const { start, end } = getPeriodRange(p);
-    setRangeLabel(formatRangeLabel(p, start, end));
+    setRangeLabel(p === "today" ? `Today — ${fmt(start)}` : `${fmt(start)} — ${fmt(end)}`);
     fetchData(start, end);
   }, [fetchData]);
 
-  const applyCustom = useCallback(() => {
-    setCustomError("");
-    const start = parseDate(customStart);
-    const end   = parseDate(customEnd);
-    if (!start) { setCustomError("Enter a valid start date — e.g. 01 Jan 2026"); return; }
-    if (!end)   { setCustomError("Enter a valid end date — e.g. 30 Apr 2026");   return; }
-    if (start > end) { setCustomError("Start date must be before end date"); return; }
-    setRangeLabel(formatRangeLabel("custom", start, end));
+  const applyPreset = useCallback((preset: typeof CUSTOM_PRESETS[0]) => {
+    setActivePreset(preset.label);
+    const { start, end } = getPresetRange(preset);
+    setRangeLabel(`${preset.label}  (${fmt(start)} — ${fmt(end)})`);
     fetchData(start, end);
-  }, [customStart, customEnd, fetchData]);
+  }, [fetchData]);
 
-  // Load default on mount
-  useEffect(() => {
-    applyPeriod("this_year");
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { applyPeriod("this_year"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cards = data ? [
     { label: "Total Revenue", value: data.totalRevenue, color: "text-green-600",  bg: "bg-green-50"  },
@@ -148,12 +131,10 @@ export default function AccountingTab() {
           )}
         </div>
 
-        {/* Period pills */}
+        {/* Main period pills */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 flex-wrap sm:flex-nowrap" style={{scrollbarWidth:"none"}}>
           {PERIODS.map(p => (
-            <button
-              key={p.key}
-              onClick={() => applyPeriod(p.key)}
+            <button key={p.key} onClick={() => applyPeriod(p.key)}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all ${
                 activePeriod === p.key
                   ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
@@ -164,39 +145,22 @@ export default function AccountingTab() {
           ))}
         </div>
 
-        {/* Custom range picker */}
+        {/* Custom preset buttons — shown when Custom Range is active */}
         {showCustom && (
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              <div className="flex flex-wrap items-center gap-2 flex-1">
-                <input
-                  type="text"
-                  className="input text-sm py-1.5 px-3 flex-1 min-w-[130px]"
-                  placeholder="e.g. 01 Jan 2026"
-                  value={customStart}
-                  onChange={e => { setCustomStart(e.target.value); setCustomError(""); }}
-                  onKeyDown={e => e.key === "Enter" && applyCustom()}
-                />
-                <span className="text-gray-400 text-sm">to</span>
-                <input
-                  type="text"
-                  className="input text-sm py-1.5 px-3 flex-1 min-w-[130px]"
-                  placeholder="e.g. 30 Apr 2026"
-                  value={customEnd}
-                  onChange={e => { setCustomEnd(e.target.value); setCustomError(""); }}
-                  onKeyDown={e => e.key === "Enter" && applyCustom()}
-                />
-                <button
-                  onClick={applyCustom}
-                  className="btn-primary text-sm py-1.5 px-4 flex-shrink-0">
-                  Apply
+          <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Select a range</p>
+            <div className="flex flex-wrap gap-2">
+              {CUSTOM_PRESETS.map(preset => (
+                <button key={preset.label} onClick={() => applyPreset(preset)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                    activePreset === preset.label
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                      : "bg-white text-gray-700 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                  }`}>
+                  {preset.label}
                 </button>
-              </div>
+              ))}
             </div>
-            {customError && (
-              <p className="text-xs text-red-500 pl-1">{customError}</p>
-            )}
           </div>
         )}
       </div>
@@ -231,12 +195,10 @@ export default function AccountingTab() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data.chart} margin={{ left: 0, right: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11 }}
-                interval={data.chart.length > 14 ? Math.floor(data.chart.length / 10) : 0}
-              />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} width={48} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }}
+                interval={data.chart.length > 14 ? Math.floor(data.chart.length / 10) : 0} />
+              <YAxis tick={{ fontSize: 11 }} width={48}
+                tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
               <Tooltip formatter={(v) => formatCurrency(Number(v))} />
               <Bar dataKey="revenue" fill="#6366f1" radius={[4, 4, 0, 0]} />
             </BarChart>
