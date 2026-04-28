@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
-import { sendSms, sendEmail as mnotifyEmail } from "@/lib/mnotify";
+import { sendSms } from "@/lib/mnotify";
 import { getIntegrationConfig } from "@/lib/integration-config";
 
 export async function GET(req: NextRequest) {
@@ -30,21 +30,24 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  const gymName = settings.gymName;
+  const gymName      = settings.gymName;
   const emailTemplate = settings.expiryNotifEmailTemplate ?? "Hi {name}, your membership at {gym} expires in {days} day(s) on {date}. Please renew to keep access.";
   const smsTemplate   = settings.expiryNotifSmsTemplate   ?? "Hi {name}, your {gym} membership expires in {days} day(s) on {date}. Renew now to stay active.";
 
   const cfg = getIntegrationConfig(settings);
 
-  // SMTP transporter — fallback only when no mNotify key
+  // Brevo SMTP transporter for email
   let transporter: nodemailer.Transporter | null = null;
-  if (!cfg.mnotifyKey && settings.expiryNotifEmail && cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
+  if (settings.expiryNotifEmail && cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
     transporter = nodemailer.createTransport({
       host: cfg.smtpHost, port: cfg.smtpPort,
       secure: cfg.smtpPort === 465,
       auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
     });
   }
+  const emailFrom = cfg.smtpFromEmail
+    ? `"${cfg.smtpFromName}" <${cfg.smtpFromEmail}>`
+    : `"${gymName}" <${cfg.smtpUser}>`;
 
   let sent = 0;
   let emailsSent = 0;
@@ -91,22 +94,18 @@ export async function GET(req: NextRequest) {
       data: { memberId: member.id, type: "EXPIRY_REMINDER", title, message, link: `/dashboard/members/${member.id}` },
     });
 
-    // Email — prefer mNotify, fall back to SMTP
-    if (settings.expiryNotifEmail && member.email) {
+    // Email via Brevo SMTP
+    if (settings.expiryNotifEmail && member.email && transporter) {
       const html = `<p>${message.replace(/\n/g, "<br/>")}</p>`;
-      if (cfg.mnotifyKey) {
-        await mnotifyEmail(cfg.mnotifyKey, [member.email], subject, html, message, gymName).catch(() => {});
-      } else if (transporter) {
-        try {
-          await transporter.sendMail({ from: `"${gymName}" <${settings.smtpUser}>`, to: member.email, subject, html, text: message });
-        } catch { /* silent */ }
-      }
-      emailsSent++;
+      try {
+        await transporter.sendMail({ from: emailFrom, to: member.email, subject, html, text: message });
+        emailsSent++;
+      } catch { /* silent */ }
     }
 
     // SMS via mNotify
     if (settings.expiryNotifSms && cfg.mnotifyKey && member.phone) {
-      await sendSms(cfg.mnotifyKey, [member.phone], smsMsg, gymName).catch(() => {});
+      sendSms(cfg.mnotifyKey, [member.phone], smsMsg, gymName).catch(() => {});
       smsSent++;
     }
 

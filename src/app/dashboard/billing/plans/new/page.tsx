@@ -337,7 +337,7 @@ export default function NewPlanPage() {
                     <input className="input w-20 text-center" type="number" min="1" value={form.duration}
                       onChange={e => set("duration", e.target.value)} />
                     <select className="select flex-1" value={form.durationUnit}
-                      onChange={e => set("durationUnit", e.target.value)}>
+                      onChange={e => { set("durationUnit", e.target.value); set("billingCycle", e.target.value); }}>
                       <option value="DAILY">Day(s)</option>
                       <option value="WEEKLY">Week(s)</option>
                       <option value="MONTHLY">Month(s)</option>

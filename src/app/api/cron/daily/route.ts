@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
 import { generateInvoiceNumber } from "@/lib/utils";
-import { sendSms, sendEmail as mnotifyEmail } from "@/lib/mnotify";
+import { sendSms } from "@/lib/mnotify";
 import { getIntegrationConfig } from "@/lib/integration-config";
 
 // GET /api/cron/daily  — run once per day at 7am
@@ -31,24 +31,22 @@ export async function GET(req: NextRequest) {
 
   const cfg = getIntegrationConfig(settings);
 
-  // SMTP transporter — fallback when no mNotify key
+  // Brevo SMTP transporter for email
   let transporter: nodemailer.Transporter | null = null;
-  if (!cfg.mnotifyKey && cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
+  if (cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
     transporter = nodemailer.createTransport({
       host: cfg.smtpHost, port: cfg.smtpPort,
       secure: cfg.smtpPort === 465,
       auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
     });
   }
+  const emailFrom = cfg.smtpFromEmail
+    ? `"${cfg.smtpFromName}" <${cfg.smtpFromEmail}>`
+    : `"${gymName}" <${cfg.smtpUser}>`;
 
-  async function sendEmail(to: string, subject: string, html: string, text?: string) {
-    if (!to) return;
-    if (cfg.mnotifyKey) {
-      mnotifyEmail(cfg.mnotifyKey, [to], subject, html, text ?? html, gymName).catch(() => {});
-      return;
-    }
-    if (!transporter) return;
-    try { await transporter!.sendMail({ from: `"${gymName}" <${cfg.smtpUser}>`, to, subject, html }); }
+  async function sendEmail(to: string, subject: string, html: string) {
+    if (!to || !transporter) return;
+    try { await transporter.sendMail({ from: emailFrom, to, subject, html }); }
     catch { /* silent */ }
   }
 

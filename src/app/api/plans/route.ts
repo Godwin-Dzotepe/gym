@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     if (!name || !hasAnyPrice) return NextResponse.json({ error: "name and at least one price required" }, { status: 400 });
 
     // Use monthlyPrice as primary price if set, else first provided price
-    const primaryPrice = Number(body.monthlyPrice ?? body.weeklyPrice ?? body.yearlyPrice ?? body.dailyPrice ?? price ?? 0);
+    const primaryPrice = Number(body.monthlyPrice || body.weeklyPrice || body.yearlyPrice || body.dailyPrice || price || 0);
 
     const plan = await prisma.plan.create({
       data: {
