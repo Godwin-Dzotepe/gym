@@ -25,7 +25,7 @@ export default async function EditPlanPage({ params }: Props) {
         <p className="text-sm text-slate-500 mt-1">Update pricing, duration, and access for <span className="font-medium text-slate-700">{plan.name}</span>.</p>
       </div>
 
-      <EditPlanForm plan={plan as any} />
+      <EditPlanForm plan={JSON.parse(JSON.stringify(plan))} />
     </div>
   );
 }

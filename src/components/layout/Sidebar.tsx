@@ -94,7 +94,7 @@ function NavLinks({ collapsed, onNav }: { collapsed?: boolean; onNav?: () => voi
       </nav>
       <div className="border-t border-slate-800 p-2 flex-shrink-0">
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={async () => { await signOut({ redirect: false }); window.location.href = "/login"; }}
           className={cn("sidebar-link w-full", collapsed && "justify-center px-2")}
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />

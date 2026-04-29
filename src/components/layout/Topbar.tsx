@@ -141,7 +141,7 @@ export default function Topbar() {
                 Settings
               </Link>
               <div className="dropdown-divider" />
-              <button onClick={() => signOut({ callbackUrl: "/login" })} className="dropdown-item dropdown-item-danger w-full">
+              <button onClick={async () => { await signOut({ redirect: false }); window.location.href = "/login"; }} className="dropdown-item dropdown-item-danger w-full">
                 Sign Out
               </button>
             </div>
