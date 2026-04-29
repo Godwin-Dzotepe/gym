@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import bcrypt from "bcryptjs";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -40,6 +41,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const member = await prisma.member.update({ where: { id }, data: updateData });
+
+  if (password && !isMember) {
+    const hashed = await bcrypt.hash(String(password), 10);
+    await prisma.user.updateMany({ where: { member: { id } }, data: { password: hashed } });
+  }
+
   return NextResponse.json(member);
 }
 

@@ -222,9 +222,8 @@ export default async function MemberProfilePage({ params }: Props) {
         <div className="space-y-5">
           {/* Member Details */}
           <div className="card p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4">
               <h2 className="section-title">Personal Details</h2>
-              <Link href={`/dashboard/members/${member.id}/edit`} className="text-xs text-indigo-600 hover:text-indigo-700">Edit</Link>
             </div>
             <dl className="space-y-3">
               {[

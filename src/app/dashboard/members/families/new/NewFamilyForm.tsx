@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Loader2, Users, Crown } from "lucide-react";
+import { Plus, Trash2, Loader2, Users, Crown, Search, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
 interface Member { id: string; firstName: string; lastName: string; email: string; memberNumber: string; }
@@ -24,10 +24,36 @@ export default function NewFamilyForm({ members }: { members: Member[] }) {
   const router = useRouter();
   const toast  = useToast();
 
-  const [name,        setName]        = useState("");
-  const [primaryId,   setPrimaryId]   = useState("");
-  const [added,       setAdded]       = useState<AddedMember[]>([]);
-  const [saving,      setSaving]      = useState(false);
+  const [name,          setName]          = useState("");
+  const [primaryId,     setPrimaryId]     = useState("");
+  const [primarySearch, setPrimarySearch] = useState("");
+  const [showDropdown,  setShowDropdown]  = useState(false);
+  const [added,         setAdded]         = useState<AddedMember[]>([]);
+  const [saving,        setSaving]        = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const selectedPrimary = members.find(m => m.id === primaryId) ?? null;
+  const filteredPrimary = primarySearch.trim()
+    ? members.filter(m => {
+        const q = primarySearch.toLowerCase();
+        return (
+          m.firstName.toLowerCase().includes(q) ||
+          m.lastName.toLowerCase().includes(q) ||
+          m.memberNumber.toLowerCase().includes(q) ||
+          m.email.toLowerCase().includes(q)
+        );
+      }).slice(0, 8)
+    : [];
 
   const usedIds = new Set([primaryId, ...added.map(a => a.memberId)]);
   const available = members.filter(m => !usedIds.has(m.id));
@@ -126,19 +152,60 @@ export default function NewFamilyForm({ members }: { members: Member[] }) {
 
         <div className="form-group">
           <label className="label label-required">Select Primary Member</label>
-          <select
-            className="select"
-            required
-            value={primaryId}
-            onChange={e => setPrimaryId(e.target.value)}
-          >
-            <option value="">— Choose a member —</option>
-            {members.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.firstName} {m.lastName} — {m.memberNumber} ({m.email})
-              </option>
-            ))}
-          </select>
+          <div ref={searchRef} className="relative">
+            {selectedPrimary ? (
+              <div className="flex items-center justify-between gap-3 p-3 border-2 border-yellow-400 bg-yellow-50 rounded-xl">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-yellow-200 flex items-center justify-center flex-shrink-0 text-xs font-bold text-yellow-800">
+                    {selectedPrimary.firstName.charAt(0)}{selectedPrimary.lastName.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{selectedPrimary.firstName} {selectedPrimary.lastName}</p>
+                    <p className="text-xs text-gray-500 truncate">{selectedPrimary.memberNumber} · {selectedPrimary.email}</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => { setPrimaryId(""); setPrimarySearch(""); }}
+                  className="text-gray-400 hover:text-red-500 flex-shrink-0 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <input
+                    className="input pl-9"
+                    placeholder="Search by name, member #, or email…"
+                    value={primarySearch}
+                    onChange={e => { setPrimarySearch(e.target.value); setShowDropdown(true); }}
+                    onFocus={() => setShowDropdown(true)}
+                  />
+                </div>
+                {showDropdown && primarySearch.trim() && (
+                  <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                    {filteredPrimary.length === 0 ? (
+                      <p className="px-4 py-3 text-sm text-gray-400">No members found</p>
+                    ) : filteredPrimary.map(m => (
+                      <button key={m.id} type="button"
+                        onMouseDown={() => { setPrimaryId(m.id); setPrimarySearch(""); setShowDropdown(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-yellow-50 text-left transition-colors border-b border-gray-50 last:border-0">
+                        <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0 text-xs font-bold text-yellow-700">
+                          {m.firstName.charAt(0)}{m.lastName.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{m.firstName} {m.lastName}</p>
+                          <p className="text-xs text-gray-500 truncate">{m.memberNumber} · {m.email}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          {!selectedPrimary && (
+            <p className="form-hint mt-1">Type a name, member number, or email to search</p>
+          )}
         </div>
       </div>
 

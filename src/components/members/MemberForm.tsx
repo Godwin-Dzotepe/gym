@@ -39,14 +39,11 @@ export default function MemberForm({ defaultValues, memberId }: Props) {
   const [planPaymentMethod, setPlanPaymentMethod] = useState("MANUAL");
 
   useEffect(() => {
-    if (!memberId) {
-      fetch("/api/plans").then(r => r.json()).then((data: Plan[]) => {
-        setPlans(data);
-        // If a planId was passed in URL, pre-select it once plans load
-        if (familyPlanId && !selectedPlanId) setSelectedPlanId(familyPlanId);
-      }).catch(() => {});
-    }
-  }, [memberId]);
+    fetch("/api/plans").then(r => r.json()).then((data: Plan[]) => {
+      setPlans(data);
+      if (familyPlanId && !selectedPlanId) setSelectedPlanId(familyPlanId);
+    }).catch(() => {});
+  }, []);
 
   const [form, setForm] = useState({
     firstName: defaultValues?.firstName ?? "",
@@ -83,7 +80,7 @@ export default function MemberForm({ defaultValues, memberId }: Props) {
       if (!res.ok) { setError(data.error ?? "Failed to save."); return; }
       const newMemberId = memberId ?? data.id;
       // Assign plan if selected (new members only)
-      if (!memberId && selectedPlanId) {
+      if (selectedPlanId) {
         await fetch("/api/members/plans", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -200,11 +197,14 @@ export default function MemberForm({ defaultValues, memberId }: Props) {
         </div>
       ))}
 
-      {/* Membership Plan (new members only) */}
-      {!memberId && (
-        <div className="card p-6">
-          <h3 className="section-title mb-1 pb-3 border-b border-slate-100">Membership Plan</h3>
-          <p className="text-xs text-gray-400 mb-4">Optional — assign a plan now or do it later from the member profile.</p>
+      {/* Membership Plan */}
+      <div className="card p-6">
+          <h3 className="section-title mb-1 pb-3 border-b border-slate-100">
+            {memberId ? "Add Membership Plan" : "Membership Plan"}
+          </h3>
+          <p className="text-xs text-gray-400 mb-4">
+            {memberId ? "Assign a new plan to this member. Leave unselected to skip." : "Optional — assign a plan now or do it later from the member profile."}
+          </p>
           {plans.length === 0 ? (
             <p className="text-sm text-gray-400 italic">No plans available. <a href="/dashboard/billing/plans/new" className="text-indigo-600 hover:underline">Create a plan first.</a></p>
           ) : (
@@ -281,7 +281,7 @@ export default function MemberForm({ defaultValues, memberId }: Props) {
             </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Notes */}
       <div className="card p-6">
@@ -299,23 +299,27 @@ export default function MemberForm({ defaultValues, memberId }: Props) {
         </div>
       </div>
 
-      {/* Password (new members only) */}
-      {!memberId && (
-        <div className="card p-6">
-          <h3 className="section-title mb-5 pb-3 border-b border-slate-100">Account Access</h3>
-          <div className="form-group max-w-sm">
-            <label className="label">Temporary Password</label>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(e) => set("password", e.target.value)}
-              placeholder="Leave blank for default (Gym@1234)"
-              className="input"
-            />
-            <p className="form-hint">Member should change this after first login</p>
-          </div>
+      {/* Password */}
+      <div className="card p-6">
+        <h3 className="section-title mb-5 pb-3 border-b border-slate-100">
+          {memberId ? "Change Password" : "Account Access"}
+        </h3>
+        <div className="form-group max-w-sm">
+          <label className="label">
+            {memberId ? <>New Password <span className="text-gray-400 font-normal">(optional)</span></> : "Temporary Password"}
+          </label>
+          <input
+            type="password"
+            value={form.password}
+            onChange={(e) => set("password", e.target.value)}
+            placeholder={memberId ? "Leave blank to keep current password" : "Leave blank for default (Gym@1234)"}
+            className="input"
+          />
+          <p className="form-hint">
+            {memberId ? "Enter a new password to update the member's login" : "Member should change this after first login"}
+          </p>
         </div>
-      )}
+      </div>
 
       {/* Submit */}
       <div className="flex items-center justify-end gap-3">
