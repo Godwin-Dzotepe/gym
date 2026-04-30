@@ -282,7 +282,6 @@ export default function MemberForm({ defaultValues, memberId }: Props) {
             </div>
           )}
         </div>
-      </div>
 
       {/* Notes */}
       <div className="card p-6">
