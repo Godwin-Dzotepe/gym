@@ -35,7 +35,7 @@ function normPhone(s: string | undefined | null): string | null {
 }
 
 function parseExpiry(text: string): string | null {
-  const fwd = text.match(/Expires?\s+(.+?)\s+from\s+now/is);
+  const fwd = text.match(/Expires?\s+(.+?)\s+from\s+now/i);
   if (fwd) {
     const s = fwd[1]; let days = 0;
     const mo = s.match(/(\d+)\s+month/i); if (mo) days += parseInt(mo[1]) * 30;
@@ -44,7 +44,7 @@ function parseExpiry(text: string): string | null {
     const d = new Date('2026-04-29'); d.setDate(d.getDate() + days);
     return d.toISOString().split('T')[0];
   }
-  const bwd = text.match(/Expired?\s+(.+?)\s+ago/is);
+  const bwd = text.match(/Expired?\s+(.+?)\s+ago/i);
   if (bwd) {
     const s = bwd[1]; let days = 0;
     const mo = s.match(/(\d+)\s+month/i); if (mo) days += parseInt(mo[1]) * 30;
