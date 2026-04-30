@@ -4,6 +4,17 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { CreditCard, Calendar, CheckCircle, AlertCircle, Trophy, Hash } from "lucide-react";
 import Link from "next/link";
 
+function formatDaysLeft(days: number): string {
+  if (days === 1) return "1 day left";
+  if (days < 7) return `${days} days left`;
+  const weeks = Math.floor(days / 7);
+  const rem = days % 7;
+  const w = weeks === 1 ? "1 week" : `${weeks} weeks`;
+  if (rem === 0) return `${w} left`;
+  const d = rem === 1 ? "1 day" : `${rem} days`;
+  return `${w} and ${d} left`;
+}
+
 export default async function PortalOverviewPage() {
   const session = await auth();
   const memberId = (session?.user as any)?.memberId;
@@ -102,7 +113,7 @@ export default async function PortalOverviewPage() {
           <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-amber-800 text-sm">
             <span className="font-semibold">Plan expiring soon — </span>
-            {daysUntilExpiry === 0 ? "expires today" : `${daysUntilExpiry} day${daysUntilExpiry === 1 ? "" : "s"} left`}.
+            {daysUntilExpiry === 0 ? "expires today" : formatDaysLeft(daysUntilExpiry!)}.
             Contact the gym to renew.
           </p>
         </div>
@@ -119,13 +130,13 @@ export default async function PortalOverviewPage() {
             {activePlan?.endDate
               ? daysUntilExpiry !== null && daysUntilExpiry <= 0
                 ? "Expired"
-                : daysUntilExpiry !== null && daysUntilExpiry <= 30
-                  ? `${daysUntilExpiry}d`
+                : daysUntilExpiry !== null && daysUntilExpiry <= 60
+                  ? formatDaysLeft(daysUntilExpiry)
                   : formatDate(activePlan.endDate, "MMM d")
               : "—"}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {activePlan?.endDate ? (daysUntilExpiry !== null && daysUntilExpiry <= 30 ? "Days Left" : "Plan Expires") : "Plan Expires"}
+            {activePlan?.endDate ? (daysUntilExpiry !== null && daysUntilExpiry <= 60 ? "Time Left" : "Plan Expires") : "Plan Expires"}
           </p>
         </div>
         <div className="card p-3 sm:p-4 text-center">

@@ -21,12 +21,23 @@ interface Member {
   _count: { attendances: number };
 }
 
+function formatDaysLeft(days: number): string {
+  if (days === 1) return "1 day left";
+  if (days < 7) return `${days} days left`;
+  const weeks = Math.floor(days / 7);
+  const rem = days % 7;
+  const w = weeks === 1 ? "1 week" : `${weeks} weeks`;
+  if (rem === 0) return `${w} left`;
+  const d = rem === 1 ? "1 day" : `${rem} days`;
+  return `${w} and ${d} left`;
+}
+
 function MembershipCountdown({ endDate, warningDays }: { endDate: Date | null; warningDays: number }) {
   if (!endDate) return <span className="text-xs text-gray-400">—</span>;
   const days = Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000);
   if (days < 0)  return <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Expired</span>;
   if (days === 0) return <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Today</span>;
-  const label = days === 1 ? "1 day left" : `${days} days left`;
+  const label = formatDaysLeft(days);
   if (days <= warningDays)
     return <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">{label}</span>;
   return <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{label}</span>;
