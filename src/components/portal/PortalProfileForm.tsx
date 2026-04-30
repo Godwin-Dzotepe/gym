@@ -1,48 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Save, Loader2, Key, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Key, CheckCircle2, AlertCircle } from "lucide-react";
 import PasswordInput from "@/components/ui/PasswordInput";
+
+function ReadField({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+      <p className="text-sm font-medium text-gray-800">{value || <span className="text-gray-300">—</span>}</p>
+    </div>
+  );
+}
 
 export default function PortalProfileForm({ member }: { member: any }) {
   const [loading, setLoading] = useState(false);
-  const [profileMsg, setProfileMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
-  const [form, setForm] = useState({
-    firstName: member?.firstName ?? "",
-    lastName: member?.lastName ?? "",
-    phone: member?.phone ?? "",
-    address: member?.address ?? "",
-    emergencyName: member?.emergencyName ?? "",
-    emergencyPhone: member?.emergencyPhone ?? "",
-  });
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
-
-  function set(k: string, v: string) { setForm((p) => ({ ...p, [k]: v })); }
-
-  async function saveProfile() {
-    setLoading(true);
-    setProfileMsg(null);
-    try {
-      const res = await fetch(`/api/members/${member.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        setProfileMsg({ ok: false, text: d.error ?? "Failed to save. Please try again." });
-      } else {
-        setProfileMsg({ ok: true, text: "Profile updated successfully." });
-        setTimeout(() => setProfileMsg(null), 4000);
-      }
-    } catch {
-      setProfileMsg({ ok: false, text: "Network error. Please try again." });
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function changePassword() {
     if (pwForm.next !== pwForm.confirm) {
@@ -78,60 +52,28 @@ export default function PortalProfileForm({ member }: { member: any }) {
 
   return (
     <div className="space-y-5">
+      {/* Personal Information — read-only */}
       <div className="card p-6">
         <h3 className="section-title mb-5 pb-3 border-b border-slate-100">Personal Information</h3>
+        <p className="text-xs text-gray-400 mb-4">To update your personal information, please contact a staff member or admin.</p>
 
-        {profileMsg && (
-          <div className={`mb-4 flex items-center gap-2 px-4 py-3 rounded-xl text-sm ${
-            profileMsg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
-          }`}>
-            {profileMsg.ok
-              ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-              : <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            }
-            {profileMsg.text}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="form-group">
-            <label className="label">First Name</label>
-            <input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className="input" />
-          </div>
-          <div className="form-group">
-            <label className="label">Last Name</label>
-            <input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className="input" />
-          </div>
-          <div className="form-group sm:col-span-2">
-            <label className="label">Phone</label>
-            <input value={form.phone} onChange={(e) => set("phone", e.target.value)} className="input" />
-          </div>
-          <div className="form-group sm:col-span-2">
-            <label className="label">Address</label>
-            <input value={form.address} onChange={(e) => set("address", e.target.value)} className="input" />
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
+          <ReadField label="First Name" value={member?.firstName} />
+          <ReadField label="Last Name" value={member?.lastName} />
+          <ReadField label="Phone" value={member?.phone} />
+          <ReadField label="Address" value={member?.address} />
         </div>
-        <div className="mt-4 pt-4 border-t border-slate-100">
+
+        <div className="mt-5 pt-4 border-t border-slate-100">
           <h4 className="text-sm font-medium text-slate-700 mb-3">Emergency Contact</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="label">Name</label>
-              <input value={form.emergencyName} onChange={(e) => set("emergencyName", e.target.value)} className="input" />
-            </div>
-            <div className="form-group">
-              <label className="label">Phone</label>
-              <input value={form.emergencyPhone} onChange={(e) => set("emergencyPhone", e.target.value)} className="input" />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
+            <ReadField label="Name" value={member?.emergencyName} />
+            <ReadField label="Phone" value={member?.emergencyPhone} />
           </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <button onClick={saveProfile} disabled={loading} className="btn-primary">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save Profile
-          </button>
         </div>
       </div>
 
+      {/* Change Password */}
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-5 pb-3 border-b border-slate-100">
           <Key className="w-4 h-4 text-slate-400" />

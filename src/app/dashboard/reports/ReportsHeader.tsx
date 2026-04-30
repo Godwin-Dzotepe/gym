@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Calendar } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Download, Calendar, Filter } from "lucide-react";
 
-export default function ReportsHeader() {
-  const [from, setFrom] = useState(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 3);
-    return d.toISOString().split("T")[0];
-  });
-  const [to, setTo] = useState(() => new Date().toISOString().split("T")[0]);
+export default function ReportsHeader({ from: initialFrom, to: initialTo }: { from: string; to: string }) {
+  const router = useRouter();
+  const [from, setFrom] = useState(initialFrom);
+  const [to, setTo] = useState(initialTo);
   const [exporting, setExporting] = useState(false);
+
+  function applyFilter() {
+    router.push(`/dashboard/reports?from=${from}&to=${to}`);
+  }
 
   async function exportReport() {
     setExporting(true);
@@ -40,6 +42,9 @@ export default function ReportsHeader() {
           <input type="date" value={to} onChange={e => setTo(e.target.value)}
             className="text-sm text-gray-700 border-0 outline-none bg-transparent" />
         </div>
+        <button onClick={applyFilter} className="btn-secondary">
+          <Filter className="w-4 h-4" /> Apply
+        </button>
         <button onClick={exportReport} disabled={exporting} className="btn-primary">
           <Download className="w-4 h-4" />
           {exporting ? "Exporting…" : "Export CSV"}

@@ -12,11 +12,44 @@ function calcNextBillingDate(from: Date, billingCycle: string): Date {
 }
 
 export async function POST(req: NextRequest) {
-  const { memberId, planId, startDate, endDate: customEndDate, paymentMethod, discount = 0 } = await req.json();
+  const { memberId, planId, startDate, endDate: customEndDate, paymentMethod, discount: manualDiscount } = await req.json();
   if (!memberId || !planId) return NextResponse.json({ error: "memberId and planId required" }, { status: 400 });
 
   const plan = await prisma.plan.findUnique({ where: { id: planId } });
   if (!plan) return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+
+  // Auto-apply family discount if plan is family-shared
+  let discount = Number(manualDiscount ?? 0);
+  if (plan.isFamilyShared) {
+    const familyMembership = await prisma.familyMember.findFirst({
+      where: { memberId },
+      include: {
+        family: {
+          include: {
+            members: {
+              where: { isPrimary: false },
+              include: { member: { include: { memberPlans: { where: { planId, isActive: true }, take: 1 } } } },
+            },
+          },
+        },
+      },
+    });
+    if (familyMembership && !familyMembership.isPrimary) {
+      // Count how many other non-primary family members already have this plan active
+      const membersWithPlan = familyMembership.family.members.filter(
+        fm => fm.memberId !== memberId && fm.member.memberPlans.length > 0
+      ).length;
+      // position: 1 = first non-primary (2nd family member), 2 = third, etc.
+      const position = membersWithPlan + 1;
+      const pct =
+        position === 1 ? Number(plan.familyDiscount2nd) :
+        position === 2 ? Number(plan.familyDiscount3rd) :
+                         Number(plan.familyDiscount4th);
+      if (pct > 0) {
+        discount = Math.round((Number(plan.price) * pct) / 100 * 100) / 100;
+      }
+    }
+  }
 
   const start = startDate ? new Date(startDate) : new Date();
 
@@ -48,7 +81,7 @@ export async function POST(req: NextRequest) {
 
   // Create initial invoice
   if (Number(plan.price) > 0) {
-    const discountAmt = Number(discount ?? 0);
+    const discountAmt = discount;
     const total = Math.max(0, Number(plan.price) - discountAmt);
     await prisma.invoice.create({
       data: {

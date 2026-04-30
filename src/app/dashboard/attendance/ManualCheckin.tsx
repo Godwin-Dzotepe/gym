@@ -2,10 +2,16 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { UserCheck, X, Search, Loader2 } from "lucide-react";
+import { UserCheck, X, Search, Loader2, CalendarClock } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
 interface MemberOption { id: string; name: string; memberNumber: string; }
+
+function nowLocal() {
+  const d = new Date();
+  d.setSeconds(0, 0);
+  return d.toISOString().slice(0, 16);
+}
 
 export default function ManualCheckin() {
   const [open, setOpen] = useState(false);
@@ -14,6 +20,8 @@ export default function ManualCheckin() {
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<MemberOption | null>(null);
   const [saving, setSaving] = useState(false);
+  const [overrideDate, setOverrideDate] = useState(false);
+  const [checkinAt, setCheckinAt] = useState(nowLocal);
   const router = useRouter();
   const toast = useToast();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,13 +40,20 @@ export default function ManualCheckin() {
     }, 300);
   }, [query]);
 
+  function closeModal() {
+    setOpen(false); setQuery(""); setSelected(null); setResults([]);
+    setOverrideDate(false); setCheckinAt(nowLocal());
+  }
+
   async function checkin() {
     if (!selected) return;
     setSaving(true);
+    const body: Record<string, any> = { memberId: selected.id, method: "MANUAL" };
+    if (overrideDate) body.checkedInAt = new Date(checkinAt).toISOString();
     const res = await fetch("/api/kiosk/checkin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ memberId: selected.id, method: "MANUAL" }),
+      body: JSON.stringify(body),
     });
     setSaving(false);
     if (!res.ok) {
@@ -46,8 +61,8 @@ export default function ManualCheckin() {
       toast.error(err.error ?? "Check-in failed.");
       return;
     }
-    toast.success(`${selected.name} checked in successfully.`);
-    setOpen(false); setQuery(""); setSelected(null); setResults([]);
+    toast.success(`${selected.name} checked in${overrideDate ? " (backdated)" : ""}.`);
+    closeModal();
     router.refresh();
   }
 
@@ -65,9 +80,7 @@ export default function ManualCheckin() {
                 <UserCheck className="w-4 h-4 text-indigo-500" />
                 <h2 className="font-semibold text-gray-900">Manual Check-in</h2>
               </div>
-              <button onClick={() => { setOpen(false); setQuery(""); setSelected(null); setResults([]); }}>
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
+              <button onClick={closeModal}><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               {!selected ? (
@@ -115,9 +128,26 @@ export default function ManualCheckin() {
                       <X className="w-4 h-4" />
                     </button>
                   </div>
+
+                  {/* Date override */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                      <input type="checkbox" checked={overrideDate}
+                        onChange={e => { setOverrideDate(e.target.checked); if (!e.target.checked) setCheckinAt(nowLocal()); }}
+                        className="rounded border-gray-300" />
+                      <CalendarClock className="w-4 h-4 text-gray-400" />
+                      Override check-in date/time
+                    </label>
+                    {overrideDate && (
+                      <input type="datetime-local" className="input text-sm"
+                        value={checkinAt} max={nowLocal()}
+                        onChange={e => setCheckinAt(e.target.value)} />
+                    )}
+                  </div>
+
                   <button onClick={checkin} disabled={saving} className="btn-primary w-full justify-center">
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
-                    {saving ? "Checking in…" : "Check In Now"}
+                    {saving ? "Checking in…" : overrideDate ? "Check In (Backdated)" : "Check In Now"}
                   </button>
                 </div>
               )}

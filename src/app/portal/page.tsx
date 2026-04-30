@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { CreditCard, Calendar, CheckCircle, AlertCircle, Trophy } from "lucide-react";
+import { CreditCard, Calendar, CheckCircle, AlertCircle, Trophy, Hash } from "lucide-react";
 import Link from "next/link";
 
 export default async function PortalOverviewPage() {
@@ -24,12 +24,14 @@ export default async function PortalOverviewPage() {
       attendances: {
         orderBy: { checkedInAt: "desc" },
         take: 5,
+        include: { class: { select: { title: true } } },
       },
       beltRanks: {
         include: { rank: true },
         orderBy: { awardedAt: "desc" },
         take: 1,
       },
+      _count: { select: { attendances: true } },
     },
   });
 
@@ -39,6 +41,12 @@ export default async function PortalOverviewPage() {
   const hasUnpaid = member.invoices.length > 0;
   const currentRank = member.beltRanks[0]?.rank;
 
+  const daysUntilExpiry = activePlan?.endDate
+    ? Math.ceil((new Date(activePlan.endDate).getTime() - Date.now()) / 86_400_000)
+    : null;
+
+  const expiryUrgent = daysUntilExpiry !== null && daysUntilExpiry <= 7;
+
   return (
     <div className="space-y-6">
       {/* Welcome */}
@@ -46,6 +54,16 @@ export default async function PortalOverviewPage() {
         <p className="text-indigo-200 text-sm">Welcome back,</p>
         <h1 className="text-xl sm:text-2xl font-bold mt-1">{member.firstName} {member.lastName}</h1>
         <p className="text-indigo-200 text-sm mt-1">Member #{member.memberNumber}</p>
+
+        {(member.checkinCode || member.pinCode) && (
+          <div className="mt-3 inline-flex items-center gap-2 bg-white/10 rounded-xl px-3 py-1.5">
+            <Hash className="w-3.5 h-3.5 text-indigo-200" />
+            <span className="text-xs text-indigo-100">Check-in code:</span>
+            <span className="text-sm font-bold tracking-widest text-white">
+              {member.checkinCode ?? member.pinCode}
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center gap-3 mt-4">
           <span className={`badge ${
@@ -78,20 +96,42 @@ export default async function PortalOverviewPage() {
         </div>
       )}
 
+      {/* Plan expiry warning */}
+      {expiryUrgent && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-amber-800 text-sm">
+            <span className="font-semibold">Plan expiring soon — </span>
+            {daysUntilExpiry === 0 ? "expires today" : `${daysUntilExpiry} day${daysUntilExpiry === 1 ? "" : "s"} left`}.
+            Contact the gym to renew.
+          </p>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <div className="card p-3 sm:p-4 text-center">
-          <p className="text-xl sm:text-2xl font-bold text-gray-900">{member.attendances.length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900">{member._count.attendances}</p>
           <p className="text-xs text-gray-500 mt-1">Sessions Attended</p>
         </div>
         <div className="card p-3 sm:p-4 text-center">
-          <p className="text-xl sm:text-2xl font-bold text-gray-900">
-            {activePlan?.endDate ? formatDate(activePlan.endDate, "MMM d") : "—"}
+          <p className={`text-xl sm:text-2xl font-bold ${expiryUrgent ? "text-amber-500" : "text-gray-900"}`}>
+            {activePlan?.endDate
+              ? daysUntilExpiry !== null && daysUntilExpiry <= 0
+                ? "Expired"
+                : daysUntilExpiry !== null && daysUntilExpiry <= 30
+                  ? `${daysUntilExpiry}d`
+                  : formatDate(activePlan.endDate, "MMM d")
+              : "—"}
           </p>
-          <p className="text-xs text-gray-500 mt-1">Plan Expires</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {activePlan?.endDate ? (daysUntilExpiry !== null && daysUntilExpiry <= 30 ? "Days Left" : "Plan Expires") : "Plan Expires"}
+          </p>
         </div>
         <div className="card p-3 sm:p-4 text-center">
-          <p className="text-xl sm:text-2xl font-bold text-gray-900">{member.invoices.length}</p>
+          <p className={`text-xl sm:text-2xl font-bold ${member.invoices.length > 0 ? "text-red-500" : "text-gray-900"}`}>
+            {member.invoices.length}
+          </p>
           <p className="text-xs text-gray-500 mt-1">Unpaid Invoices</p>
         </div>
         <div className="card p-3 sm:p-4 text-center">
@@ -127,11 +167,11 @@ export default async function PortalOverviewPage() {
           <div className="space-y-3">
             {member.attendances.map((a) => (
               <div key={a.id} className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <CheckCircle className="w-4 h-4 text-green-600" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Checked in</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{(a as any).class?.title ?? "Open Gym"}</p>
                   <p className="text-xs text-gray-500">{formatDate(a.checkedInAt, "EEE, MMM d · h:mm a")}</p>
                 </div>
               </div>

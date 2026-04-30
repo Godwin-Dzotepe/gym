@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
-  const { pin, memberId, method } = await req.json();
+  const { pin, memberId, method, checkedInAt } = await req.json();
 
   let member;
 
@@ -36,9 +36,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Record attendance
-  await prisma.attendance.create({
-    data: { memberId: member.id, method: method ?? "PIN" },
-  });
+  const attendanceData: any = { memberId: member.id, method: method ?? "PIN" };
+  if (checkedInAt) {
+    attendanceData.checkedInAt = new Date(checkedInAt);
+    attendanceData.isBackdated = true;
+    attendanceData.originalDate = new Date(checkedInAt);
+  }
+  await prisma.attendance.create({ data: attendanceData });
 
   // Attendance milestone notifications
   const totalAttendance = await prisma.attendance.count({ where: { memberId: member.id } });

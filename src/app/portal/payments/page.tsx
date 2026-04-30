@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { getGymCurrency } from "@/lib/currency";
 import { CreditCard, CheckCircle2, AlertCircle, Clock } from "lucide-react";
-import MarkPaidButton from "@/components/billing/MarkPaidButton";
 
 export default async function PortalPaymentsPage() {
   const session = await auth();
@@ -70,14 +69,9 @@ export default async function PortalPaymentsPage() {
                     <td className="table-td font-semibold">{formatCurrency(Number(inv.total), currency)}</td>
                     <td className="table-td text-slate-500 text-xs hidden sm:table-cell">{formatDate(inv.dueDate)}</td>
                     <td className="table-td">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`badge ${statusBadge[inv.status] ?? "badge-gray"}`}>
-                          {inv.status.charAt(0) + inv.status.slice(1).toLowerCase()}
-                        </span>
-                        {(inv.status === "PENDING" || inv.status === "FAILED") && (
-                          <MarkPaidButton invoiceId={inv.id} />
-                        )}
-                      </div>
+                      <span className={`badge ${statusBadge[inv.status] ?? "badge-gray"}`}>
+                        {inv.status.charAt(0) + inv.status.slice(1).toLowerCase()}
+                      </span>
                     </td>
                   </tr>
                 );

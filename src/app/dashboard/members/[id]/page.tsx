@@ -15,6 +15,7 @@ import MemberFamilyAccount from "@/components/members/MemberFamilyAccount";
 import CreateChargeButton from "@/components/billing/CreateChargeButton";
 import MemberPhotoUpload from "@/components/members/MemberPhotoUpload";
 import WaiverButton from "@/components/members/WaiverButton";
+import MemberBalanceButton from "@/components/members/MemberBalanceButton";
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -132,6 +133,7 @@ export default async function MemberProfilePage({ params }: Props) {
               className="btn-secondary text-xs">
               <Edit className="w-3.5 h-3.5" /> Edit
             </Link>
+            <MemberBalanceButton memberId={member.id} balance={Number(member.balance)} />
           </div>
         </div>
       </div>
