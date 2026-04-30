@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getIntegrationConfig } from "@/lib/integration-config";
 import { sendSms } from "@/lib/mnotify";
-import nodemailer from "nodemailer";
+import { sendEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -39,26 +39,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Send Email
-  if (cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: cfg.smtpHost,
-        port: cfg.smtpPort ?? 587,
-        secure: false,
-        auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
-      });
-      const subject = action === "APPROVE"
-        ? `Welcome to ${gymName} — Membership Approved!`
-        : `Your ${gymName} Membership Application`;
-      await transporter.sendMail({
-        from: `"${cfg.smtpFromName}" <${cfg.smtpFromEmail}>`,
-        to: member.email,
-        subject,
-        text: messageBody,
-        html: `<p style="font-family:sans-serif;font-size:15px;line-height:1.6">${messageBody.replace(/\n/g, "<br>")}</p>`,
-      });
-    } catch {}
-  }
+  const fromEmail = cfg.smtpFromEmail ?? "noreply@oraclegym.kobby.dev";
+  const fromName  = cfg.smtpFromName ?? gymName;
+  const subject = action === "APPROVE"
+    ? `Welcome to ${gymName} — Membership Approved!`
+    : `Your ${gymName} Membership Application`;
+
+  await sendEmail({
+    to: member.email,
+    subject,
+    html: `<p style="font-family:sans-serif;font-size:15px;line-height:1.6">${messageBody.replace(/\n/g, "<br>")}</p>`,
+    text: messageBody,
+    fromEmail,
+    fromName,
+  }).catch(() => {});
 
   return NextResponse.json({ success: true, status: newStatus });
 }

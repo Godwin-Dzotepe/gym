@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import nodemailer from "nodemailer";
 import { getIntegrationConfig } from "@/lib/integration-config";
+import { sendEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -19,27 +19,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No recipient email found. Set your gym email in settings." }, { status: 400 });
   }
 
-  if (!cfg.smtpHost || !cfg.smtpUser || !cfg.smtpPass) {
-    return NextResponse.json({ error: "No SMTP settings configured. Add SMTP_HOST, SMTP_USER, and SMTP_PASS." }, { status: 400 });
+  const hasResend = !!process.env.RESEND_API_KEY;
+  const hasSmtp   = !!(cfg.smtpHost && cfg.smtpUser && cfg.smtpPass);
+
+  if (!hasResend && !hasSmtp) {
+    return NextResponse.json({
+      error: "No email provider configured. Add RESEND_API_KEY to your environment variables.",
+    }, { status: 400 });
   }
 
-  const from = cfg.smtpFromEmail
-    ? `"${cfg.smtpFromName}" <${cfg.smtpFromEmail}>`
-    : `"${gymName}" <${cfg.smtpUser}>`;
+  const fromEmail = cfg.smtpFromEmail ?? cfg.smtpUser ?? "noreply@oraclegym.kobby.dev";
+  const fromName  = cfg.smtpFromName ?? gymName;
 
   try {
-    const transporter = nodemailer.createTransport({
-      host: cfg.smtpHost, port: cfg.smtpPort,
-      secure: cfg.smtpPort === 465,
-      auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
-    });
-    await transporter.sendMail({
-      from,
+    await sendEmail({
       to: recipient,
       subject: `Test Email from ${gymName}`,
-      html: `<p>This is a test email from <strong>${gymName}</strong>. Your Brevo SMTP settings are working correctly.</p>`,
+      html: `<p>This is a test email from <strong>${gymName}</strong>. Your email settings are working correctly.</p>`,
+      fromEmail,
+      fromName,
     });
-    return NextResponse.json({ success: true, sentTo: recipient, via: "Brevo SMTP", from });
+    return NextResponse.json({
+      success: true,
+      sentTo: recipient,
+      via: hasResend ? "Resend API" : "SMTP",
+      from: `${fromName} <${fromEmail}>`,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message ?? "Failed to send email." }, { status: 500 });
   }

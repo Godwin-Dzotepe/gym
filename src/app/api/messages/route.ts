@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import nodemailer from "nodemailer";
 import { sendSms } from "@/lib/mnotify";
 import { getIntegrationConfig } from "@/lib/integration-config";
+import { sendBulkEmail } from "@/lib/email";
 
 export async function GET() {
   const session = await auth();
@@ -74,44 +74,31 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Email via Brevo SMTP ──────────────────────────────────────────────────────
+  // ── Email via Resend / SMTP ───────────────────────────────────────────────────
   if (type === "EMAIL") {
-    const emails = members.map(m => m.email).filter(Boolean) as string[];
-    if (emails.length === 0) {
+    const withEmail = members.filter(m => m.email) as (typeof members[0] & { email: string })[];
+    if (withEmail.length === 0) {
       deliveryStatus = "no_recipients";
       deliveryError  = "No members in this segment have an email address saved.";
-    } else if (cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
-      const from = cfg.smtpFromEmail
-        ? `"${cfg.smtpFromName}" <${cfg.smtpFromEmail}>`
-        : `"${gymName}" <${cfg.smtpUser}>`;
+    } else if (process.env.RESEND_API_KEY || (cfg.smtpHost && cfg.smtpUser && cfg.smtpPass)) {
+      const fromEmail = cfg.smtpFromEmail ?? cfg.smtpUser ?? "noreply@oraclegym.kobby.dev";
+      const fromName  = cfg.smtpFromName ?? gymName;
 
-      const transporter = nodemailer.createTransport({
-        host: cfg.smtpHost, port: cfg.smtpPort,
-        secure: cfg.smtpPort === 465,
-        auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
-      });
-
-      const results = await Promise.allSettled(
-        members.filter(m => m.email).map(m =>
-          transporter.sendMail({
-            from,
-            to: m.email!,
-            subject: subject ?? `Message from ${gymName}`,
-            html: `<p>Hi ${m.firstName},</p><p>${body.replace(/\n/g, "<br/>")}</p>`,
-            text: `Hi ${m.firstName},\n\n${body}`,
-          })
-        )
+      const { failed } = await sendBulkEmail(
+        withEmail.map(m => ({ to: m.email, firstName: m.firstName })),
+        subject ?? `Message from ${gymName}`,
+        (firstName) => `<p>Hi ${firstName},</p><p>${body.replace(/\n/g, "<br/>")}</p>`,
+        fromEmail,
+        fromName,
       );
 
-      const failed = results.filter(r => r.status === "rejected");
-      if (failed.length === results.length) {
+      if (failed > 0 && failed === withEmail.length) {
         deliveryStatus = "failed";
-        const reason = (failed[0] as PromiseRejectedResult).reason;
-        deliveryError = reason?.message ?? "All SMTP deliveries failed. Check your SMTP settings.";
+        deliveryError  = "All email deliveries failed. Check your email settings.";
       }
     } else {
       deliveryStatus = "no_provider";
-      deliveryError  = "No email provider configured. Add SMTP settings in Settings → SMS & Email.";
+      deliveryError  = "No email provider configured. Add RESEND_API_KEY to your environment variables.";
     }
   }
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import nodemailer from "nodemailer";
 import { sendSms } from "@/lib/mnotify";
 import { getIntegrationConfig } from "@/lib/integration-config";
+import { sendEmail } from "@/lib/email";
 
 export async function GET(req: NextRequest) {
   const secret = req.headers.get("x-cron-secret");
@@ -35,19 +35,8 @@ export async function GET(req: NextRequest) {
   const smsTemplate   = settings.expiryNotifSmsTemplate   ?? "Hi {name}, your {gym} membership expires in {days} day(s) on {date}. Renew now to stay active.";
 
   const cfg = getIntegrationConfig(settings);
-
-  // Brevo SMTP transporter for email
-  let transporter: nodemailer.Transporter | null = null;
-  if (settings.expiryNotifEmail && cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
-    transporter = nodemailer.createTransport({
-      host: cfg.smtpHost, port: cfg.smtpPort,
-      secure: cfg.smtpPort === 465,
-      auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
-    });
-  }
-  const emailFrom = cfg.smtpFromEmail
-    ? `"${cfg.smtpFromName}" <${cfg.smtpFromEmail}>`
-    : `"${gymName}" <${cfg.smtpUser}>`;
+  const emailFromEmail = cfg.smtpFromEmail ?? "noreply@oraclegym.kobby.dev";
+  const emailFromName  = cfg.smtpFromName ?? gymName;
 
   let sent = 0;
   let emailsSent = 0;
@@ -94,11 +83,16 @@ export async function GET(req: NextRequest) {
       data: { memberId: member.id, type: "EXPIRY_REMINDER", title, message, link: `/dashboard/members/${member.id}` },
     });
 
-    // Email via Brevo SMTP
-    if (settings.expiryNotifEmail && member.email && transporter) {
-      const html = `<p>${message.replace(/\n/g, "<br/>")}</p>`;
+    // Email via Resend / SMTP
+    if (settings.expiryNotifEmail && member.email) {
       try {
-        await transporter.sendMail({ from: emailFrom, to: member.email, subject, html, text: message });
+        await sendEmail({
+          to: member.email, subject,
+          html: `<p>${message.replace(/\n/g, "<br/>")}</p>`,
+          text: message,
+          fromEmail: emailFromEmail,
+          fromName: emailFromName,
+        });
         emailsSent++;
       } catch { /* silent */ }
     }

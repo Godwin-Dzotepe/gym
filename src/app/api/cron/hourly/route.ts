@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import nodemailer from "nodemailer";
+import { sendEmail } from "@/lib/email";
 
 // GET /api/cron/hourly — run every hour
 export async function GET(req: NextRequest) {
@@ -12,17 +12,9 @@ export async function GET(req: NextRequest) {
   const results = { classRemindersSent: 0 };
 
   const settings = await prisma.gymSettings.findFirst();
-  const gymName = settings?.gymName ?? "Oracle Gym";
-
-  let transporter: nodemailer.Transporter | null = null;
-  if (settings?.smtpHost && settings.smtpUser && settings.smtpPass) {
-    transporter = nodemailer.createTransport({
-      host: settings.smtpHost,
-      port: settings.smtpPort ?? 587,
-      secure: (settings.smtpPort ?? 587) === 465,
-      auth: { user: settings.smtpUser, pass: settings.smtpPass },
-    });
-  }
+  const gymName    = settings?.gymName ?? "Oracle Gym";
+  const fromEmail  = settings?.email ?? process.env.SMTP_FROM_EMAIL ?? "noreply@oraclegym.kobby.dev";
+  const fromName   = settings?.gymName ?? gymName;
 
   // ─── CLASS REMINDERS: notify booked members 1 hour before class starts ───────
   const now = new Date();
@@ -68,15 +60,14 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      if (transporter && member.email) {
-        try {
-          await transporter.sendMail({
-            from: `"${gymName}" <${settings!.smtpUser}>`,
-            to: member.email,
-            subject: `Reminder: ${cls.title} starts in ~1 hour`,
-            html: `<p>Hi ${member.firstName},</p><p>Just a reminder that <strong>${cls.title}</strong> starts at <strong>${startLabel}</strong>. See you soon!</p>`,
-          });
-        } catch { /* silent */ }
+      if (member.email) {
+        await sendEmail({
+          to: member.email,
+          subject: `Reminder: ${cls.title} starts in ~1 hour`,
+          html: `<p>Hi ${member.firstName},</p><p>Just a reminder that <strong>${cls.title}</strong> starts at <strong>${startLabel}</strong>. See you soon!</p>`,
+          fromEmail,
+          fromName,
+        }).catch(() => {});
       }
 
       results.classRemindersSent++;

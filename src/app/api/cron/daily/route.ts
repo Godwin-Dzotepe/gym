@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import nodemailer from "nodemailer";
 import { generateInvoiceNumber } from "@/lib/utils";
 import { sendSms } from "@/lib/mnotify";
 import { getIntegrationConfig } from "@/lib/integration-config";
+import { sendEmail as _sendEmail } from "@/lib/email";
 
 // GET /api/cron/daily  — run once per day at 7am
 export async function GET(req: NextRequest) {
@@ -30,24 +30,12 @@ export async function GET(req: NextRequest) {
   const lateFeeAfterDays = settings?.lateFeeAfterDays ?? 5;
 
   const cfg = getIntegrationConfig(settings);
-
-  // Brevo SMTP transporter for email
-  let transporter: nodemailer.Transporter | null = null;
-  if (cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) {
-    transporter = nodemailer.createTransport({
-      host: cfg.smtpHost, port: cfg.smtpPort,
-      secure: cfg.smtpPort === 465,
-      auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
-    });
-  }
-  const emailFrom = cfg.smtpFromEmail
-    ? `"${cfg.smtpFromName}" <${cfg.smtpFromEmail}>`
-    : `"${gymName}" <${cfg.smtpUser}>`;
+  const emailFromEmail = cfg.smtpFromEmail ?? "noreply@oraclegym.kobby.dev";
+  const emailFromName  = cfg.smtpFromName ?? gymName;
 
   async function sendEmail(to: string, subject: string, html: string) {
-    if (!to || !transporter) return;
-    try { await transporter.sendMail({ from: emailFrom, to, subject, html }); }
-    catch { /* silent */ }
+    if (!to) return;
+    await _sendEmail({ to, subject, html, fromEmail: emailFromEmail, fromName: emailFromName }).catch(() => {});
   }
 
   async function sendSmsFn(to: string | null | undefined, message: string) {
