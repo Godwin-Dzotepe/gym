@@ -83,7 +83,7 @@ async function extractFromPdf(file: string) {
     const topY = block[0].y, page = block[0].page;
     const bottomY = block[block.length - 1].y;
     const endDate = parseExpiry(block.slice(1).map(i => i.str).join(' '));
-    const contacts = contCol.filter(c => c.page === page && c.y >= bottomY - 10 && c.y <= topY + 35);
+    const contacts = contCol.filter(c => c.page === page && c.y >= bottomY - 10 && c.y <= topY + 5);
     const phoneRaw = contacts.find(c => /[\d\s\(\)\-]{9,}/.test(c.str) && !c.str.includes('@'));
     const emailRaw = contacts.find(c => c.str.includes('@'));
     results.push({ plan: planName, endDate, phone: normPhone(phoneRaw?.str), email: emailRaw?.str?.toLowerCase() || null });

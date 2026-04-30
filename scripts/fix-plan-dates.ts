@@ -84,7 +84,7 @@ async function extractFromPdf(file: string) {
     const expiryTxt = block.slice(1).map(i => i.str).join(' ');
     const endDate = parseExpiry(expiryTxt);
 
-    const contacts = contCol.filter(c => c.page === page && c.y >= bottomY - 10 && c.y <= topY + 35);
+    const contacts = contCol.filter(c => c.page === page && c.y >= bottomY - 10 && c.y <= topY + 5);
     const phoneRaw = contacts.find(c => /[\d\s\(\)\-]{9,}/.test(c.str) && !c.str.includes('@'));
     const emailRaw = contacts.find(c => c.str.includes('@'));
 
