@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Save, CheckCircle2, Users } from "lucide-react";
 import { useFormatCurrency } from "@/components/providers/CurrencyProvider";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 interface Plan {
   id: string;
@@ -308,8 +309,7 @@ export default function MemberForm({ defaultValues, memberId }: Props) {
           <label className="label">
             {memberId ? <>New Password <span className="text-gray-400 font-normal">(optional)</span></> : "Temporary Password"}
           </label>
-          <input
-            type="password"
+          <PasswordInput
             value={form.password}
             onChange={(e) => set("password", e.target.value)}
             placeholder={memberId ? "Leave blank to keep current password" : "Leave blank for default (Gym@1234)"}

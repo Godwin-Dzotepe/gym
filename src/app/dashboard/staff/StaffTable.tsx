@@ -6,6 +6,7 @@ import { formatDate, getInitials } from "@/lib/utils";
 import { Plus, Pencil, X, Save, Loader2, UserX, UserCheck, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import PasswordInput from "@/components/ui/PasswordInput";
 import { useFormatCurrency } from "@/components/providers/CurrencyProvider";
 
 interface StaffMember {
@@ -187,7 +188,7 @@ export default function StaffTable({ staff: initial }: { staff: StaffMember[] })
                     {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                   </select></div>
                 <div className="form-group"><label className="label">{editing ? "New Password" : "Password *"}</label>
-                  <input className="input" type="password" required={!editing} value={form.password} onChange={e => set("password", e.target.value)} placeholder={editing ? "Leave blank to keep" : ""} /></div>
+                  <PasswordInput className="input" required={!editing} value={form.password} onChange={e => set("password", e.target.value)} placeholder={editing ? "Leave blank to keep" : ""} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="form-group"><label className="label">Start Date</label>

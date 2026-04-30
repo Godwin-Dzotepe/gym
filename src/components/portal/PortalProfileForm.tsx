@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Save, Loader2, Key, CheckCircle2, AlertCircle } from "lucide-react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 export default function PortalProfileForm({ member }: { member: any }) {
   const [loading, setLoading] = useState(false);
@@ -152,17 +153,17 @@ export default function PortalProfileForm({ member }: { member: any }) {
         <div className="space-y-3 max-w-sm">
           <div className="form-group">
             <label className="label">Current Password</label>
-            <input type="password" value={pwForm.current}
+            <PasswordInput value={pwForm.current}
               onChange={(e) => setPwForm((p) => ({ ...p, current: e.target.value }))} className="input" />
           </div>
           <div className="form-group">
             <label className="label">New Password</label>
-            <input type="password" value={pwForm.next}
+            <PasswordInput value={pwForm.next}
               onChange={(e) => setPwForm((p) => ({ ...p, next: e.target.value }))} className="input" />
           </div>
           <div className="form-group">
             <label className="label">Confirm New Password</label>
-            <input type="password" value={pwForm.confirm}
+            <PasswordInput value={pwForm.confirm}
               onChange={(e) => setPwForm((p) => ({ ...p, confirm: e.target.value }))} className="input" />
           </div>
         </div>

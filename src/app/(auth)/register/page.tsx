@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 const INPUT = "w-full px-3.5 py-2.5 text-sm bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition";
 const LABEL = "block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5";
@@ -313,7 +314,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <label className={LABEL}>Password <span className="text-orange-400">*</span></label>
-                    <input type="password" value={form.password} onChange={e => set("password", e.target.value)} className={INPUT} placeholder="Min. 8 characters" />
+                    <PasswordInput value={form.password} onChange={e => set("password", e.target.value)} className={INPUT} iconClassName="text-white/50 hover:text-white/90" placeholder="Min. 8 characters" />
                     {form.password.length > 0 && (
                       <div className="mt-2 flex gap-1">
                         {[1,2,3,4].map(i => (
@@ -328,7 +329,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <label className={LABEL}>Confirm Password <span className="text-orange-400">*</span></label>
-                    <input type="password" value={form.confirmPassword} onChange={e => set("confirmPassword", e.target.value)} className={INPUT} placeholder="Repeat your password" />
+                    <PasswordInput value={form.confirmPassword} onChange={e => set("confirmPassword", e.target.value)} className={INPUT} iconClassName="text-white/50 hover:text-white/90" placeholder="Repeat your password" />
                     {form.confirmPassword.length > 0 && (
                       <p className={`text-xs mt-1.5 ${form.password === form.confirmPassword ? "text-green-400" : "text-red-400"}`}>
                         {form.password === form.confirmPassword ? "✓ Passwords match" : "✗ Passwords don't match"}

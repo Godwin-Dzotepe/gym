@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import Image from "next/image";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 const GYM_TYPES = ["FITNESS", "MARTIAL_ARTS", "YOGA", "DANCE", "PILATES", "GYMNASTICS", "CROSSFIT", "CLUB"];
 const CURRENCIES = ["GHS", "USD", "EUR", "GBP", "NGN", "KES", "ZAR"];
@@ -547,7 +548,7 @@ export default function SettingsForm({ settings }: { settings: any }) {
                 <FieldGroup label="mNotify API Key" hint="Get your API key from app.mnotify.com → Settings → API">
                   <div className="relative">
                     <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input className="input pl-9" type="password"
+                    <PasswordInput className="input pl-9"
                       value={form.smsApiKey}
                       onChange={e => set("smsApiKey", e.target.value)}
                       placeholder="Your mNotify API key"
@@ -585,7 +586,7 @@ export default function SettingsForm({ settings }: { settings: any }) {
                   </FieldGroup>
                 </div>
                 <FieldGroup label="App Password" hint="Use an app-specific password, not your main account password">
-                  <input className="input" type="password" value={form.smtpPass} onChange={e => set("smtpPass", e.target.value)} placeholder="••••••••••••••••" />
+                  <PasswordInput className="input" value={form.smtpPass} onChange={e => set("smtpPass", e.target.value)} placeholder="••••••••••••••••" />
                 </FieldGroup>
 
                 <div className="bg-sky-50 border border-sky-100 rounded-2xl p-4 flex items-start gap-3">
