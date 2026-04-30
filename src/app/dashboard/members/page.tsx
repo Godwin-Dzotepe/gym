@@ -6,7 +6,7 @@ import MembersTable from "@/components/members/MembersTable";
 import MembersToolbar from "./MembersToolbar";
 
 interface Props {
-  searchParams: Promise<{ status?: string; search?: string; page?: string; tab?: string; planId?: string }>;
+  searchParams: Promise<{ status?: string; search?: string; page?: string; tab?: string; planId?: string; expiring?: string }>;
 }
 
 export default async function MembersPage({ searchParams }: Props) {
@@ -15,6 +15,7 @@ export default async function MembersPage({ searchParams }: Props) {
   const search = params.search;
   const tab = params.tab ?? "members";
   const planId = params.planId;
+  const expiring = params.expiring === "true";
   const page = parseInt(params.page ?? "1");
   const limit = 20;
 
@@ -28,7 +29,11 @@ export default async function MembersPage({ searchParams }: Props) {
       { memberNumber: { contains: search } },
     ];
   }
-  if (tab === "visitors") {
+  if (expiring) {
+    const now = new Date();
+    const sevenDaysLater = new Date(Date.now() + 7 * 86400000);
+    where.memberPlans = { some: { isActive: true, endDate: { gte: now, lte: sevenDaysLater } } };
+  } else if (tab === "visitors") {
     where.memberPlans = { none: { isActive: true } };
   } else if (planId) {
     where.memberPlans = { some: { planId, isActive: true } };
@@ -66,11 +71,12 @@ export default async function MembersPage({ searchParams }: Props) {
   ];
 
   const statusTabs = [
-    { label: "All", value: undefined },
-    { label: "Active", value: "ACTIVE", count: statusCounts.ACTIVE ?? 0 },
-    { label: "Pending", value: "PENDING", count: statusCounts.PENDING ?? 0 },
-    { label: "Frozen", value: "FROZEN", count: statusCounts.FROZEN ?? 0 },
-    { label: "Cancelled", value: "CANCELLED", count: statusCounts.CANCELLED ?? 0 },
+    { label: "All", value: undefined, expiring: false },
+    { label: "Active", value: "ACTIVE", count: statusCounts.ACTIVE ?? 0, expiring: false },
+    { label: "Pending", value: "PENDING", count: statusCounts.PENDING ?? 0, expiring: false },
+    { label: "Frozen", value: "FROZEN", count: statusCounts.FROZEN ?? 0, expiring: false },
+    { label: "Cancelled", value: "CANCELLED", count: statusCounts.CANCELLED ?? 0, expiring: false },
+    { label: "Expiring Soon", value: undefined, expiring: true },
   ];
 
   return (
@@ -121,14 +127,20 @@ export default async function MembersPage({ searchParams }: Props) {
       {tab === "members" && (
         <div className="flex gap-1 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'}}>
           {statusTabs.map(t => {
-            const isActive = status === t.value || (!status && !t.value);
-            const href = t.value
-              ? `/dashboard/members?tab=members&status=${t.value}`
-              : "/dashboard/members?tab=members";
+            const isActive = t.expiring
+              ? expiring
+              : !expiring && (status === t.value || (!status && !t.value));
+            const href = t.expiring
+              ? "/dashboard/members?tab=members&expiring=true"
+              : t.value
+                ? `/dashboard/members?tab=members&status=${t.value}`
+                : "/dashboard/members?tab=members";
             return (
               <Link key={t.label} href={href}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive ? "bg-indigo-100 text-indigo-700" : "text-gray-500 hover:bg-gray-100"
+                  isActive
+                    ? t.expiring ? "bg-yellow-100 text-yellow-700" : "bg-indigo-100 text-indigo-700"
+                    : "text-gray-500 hover:bg-gray-100"
                 }`}>
                 {t.label}
                 {t.count !== undefined && (

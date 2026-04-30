@@ -115,7 +115,7 @@ export default async function DashboardPage() {
                 <p className="text-sm font-semibold text-yellow-800">{s.expiringPlans.length} Membership{s.expiringPlans.length > 1 ? "s" : ""} Expiring Soon</p>
                 <p className="text-xs text-yellow-700 mt-0.5">Plans expiring within the next 7 days.</p>
               </div>
-              <Link href="/dashboard/billing/plans" className="text-xs font-semibold text-yellow-700 hover:text-yellow-800 whitespace-nowrap">
+              <Link href="/dashboard/members?tab=members&expiring=true" className="text-xs font-semibold text-yellow-700 hover:text-yellow-800 whitespace-nowrap">
                 View →
               </Link>
             </div>
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
           subtitle="Next 7 days"
           icon={Calendar} color={s.expiringPlans.length > 0 ? "yellow" : "slate"}
           trend="Needs renewal" trendDir={s.expiringPlans.length > 0 ? "down" : "neutral"}
-          href="/dashboard/billing/plans" />
+          href="/dashboard/members?tab=members&expiring=true" />
         <StatCard title="Frozen Members" value={s.frozenMembers.toLocaleString()}
           subtitle="Temporarily inactive"
           icon={Users} color="blue"
@@ -256,8 +256,8 @@ export default async function DashboardPage() {
         <div className="card">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <h2 className="section-title">Expiring Plans</h2>
-            <Link href="/dashboard/billing/plans" className="text-xs text-sky-600 hover:text-sky-700 font-medium flex items-center gap-1">
-              Manage <ArrowRight className="w-3 h-3" />
+            <Link href="/dashboard/members?tab=members&expiring=true" className="text-xs text-sky-600 hover:text-sky-700 font-medium flex items-center gap-1">
+              View all <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
           <div className="divide-y divide-slate-50">
