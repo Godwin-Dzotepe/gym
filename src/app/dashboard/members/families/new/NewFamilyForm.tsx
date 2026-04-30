@@ -18,7 +18,26 @@ const RELATIONSHIPS = [
   { value: "OTHER",          label: "Other"          },
 ];
 
-interface AddedMember { memberId: string; relationship: string; }
+interface MemberRow {
+  rowId: string;
+  memberId: string;
+  relationship: string;
+  search: string;
+  open: boolean;
+}
+
+function filterMembers(members: Member[], query: string, excludeIds: Set<string>, currentId: string) {
+  const q = query.toLowerCase();
+  return members
+    .filter(m => m.id === currentId || !excludeIds.has(m.id))
+    .filter(m =>
+      m.firstName.toLowerCase().includes(q) ||
+      m.lastName.toLowerCase().includes(q) ||
+      m.memberNumber.toLowerCase().includes(q) ||
+      m.email.toLowerCase().includes(q)
+    )
+    .slice(0, 6);
+}
 
 export default function NewFamilyForm({ members }: { members: Member[] }) {
   const router = useRouter();
@@ -27,15 +46,16 @@ export default function NewFamilyForm({ members }: { members: Member[] }) {
   const [name,          setName]          = useState("");
   const [primaryId,     setPrimaryId]     = useState("");
   const [primarySearch, setPrimarySearch] = useState("");
-  const [showDropdown,  setShowDropdown]  = useState(false);
-  const [added,         setAdded]         = useState<AddedMember[]>([]);
+  const [showPrimary,   setShowPrimary]   = useState(false);
+  const [rows,          setRows]          = useState<MemberRow[]>([]);
   const [saving,        setSaving]        = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
+
+  const primaryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
+      if (primaryRef.current && !primaryRef.current.contains(e.target as Node)) {
+        setShowPrimary(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -43,48 +63,49 @@ export default function NewFamilyForm({ members }: { members: Member[] }) {
   }, []);
 
   const selectedPrimary = members.find(m => m.id === primaryId) ?? null;
+  const usedIds = new Set([primaryId, ...rows.map(r => r.memberId).filter(Boolean)]);
+  const allUsed = members.every(m => usedIds.has(m.id));
+
   const filteredPrimary = primarySearch.trim()
-    ? members.filter(m => {
-        const q = primarySearch.toLowerCase();
-        return (
-          m.firstName.toLowerCase().includes(q) ||
-          m.lastName.toLowerCase().includes(q) ||
-          m.memberNumber.toLowerCase().includes(q) ||
-          m.email.toLowerCase().includes(q)
-        );
-      }).slice(0, 8)
+    ? members
+        .filter(m => !usedIds.has(m.id) || m.id === primaryId)
+        .filter(m => {
+          const q = primarySearch.toLowerCase();
+          return (
+            m.firstName.toLowerCase().includes(q) ||
+            m.lastName.toLowerCase().includes(q) ||
+            m.memberNumber.toLowerCase().includes(q) ||
+            m.email.toLowerCase().includes(q)
+          );
+        })
+        .slice(0, 8)
     : [];
 
-  const usedIds = new Set([primaryId, ...added.map(a => a.memberId)]);
-  const available = members.filter(m => !usedIds.has(m.id));
-
-  function addMember() {
-    const first = available[0];
-    if (!first) return;
-    setAdded(prev => [...prev, { memberId: first.id, relationship: "FAMILY_MEMBER" }]);
+  function addRow() {
+    setRows(prev => [...prev, {
+      rowId: Math.random().toString(36).slice(2),
+      memberId: "",
+      relationship: "FAMILY_MEMBER",
+      search: "",
+      open: false,
+    }]);
   }
 
-  function updateAdded(idx: number, field: keyof AddedMember, value: string) {
-    setAdded(prev => prev.map((a, i) => i === idx ? { ...a, [field]: value } : a));
+  function updateRow(rowId: string, updates: Partial<MemberRow>) {
+    setRows(prev => prev.map(r => r.rowId === rowId ? { ...r, ...updates } : r));
   }
 
-  function removeAdded(idx: number) {
-    setAdded(prev => prev.filter((_, i) => i !== idx));
-  }
-
-  function memberLabel(id: string) {
-    const m = members.find(x => x.id === id);
-    return m ? `${m.firstName} ${m.lastName} (${m.memberNumber})` : "";
+  function removeRow(rowId: string) {
+    setRows(prev => prev.filter(r => r.rowId !== rowId));
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim())    { toast.error("Family name is required."); return; }
-    if (!primaryId)      { toast.error("Please select a primary member."); return; }
+    if (!name.trim()) { toast.error("Family name is required."); return; }
+    if (!primaryId)   { toast.error("Please select a primary member."); return; }
 
     setSaving(true);
     try {
-      // 1. Create family with primary member
       const res = await fetch("/api/families", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,13 +114,12 @@ export default function NewFamilyForm({ members }: { members: Member[] }) {
       if (!res.ok) { toast.error("Failed to create family."); return; }
       const { family } = await res.json();
 
-      // 2. Add additional members
-      for (const a of added) {
-        if (!a.memberId) continue;
+      for (const row of rows) {
+        if (!row.memberId) continue;
         await fetch(`/api/families/${family.id}/members`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ memberId: a.memberId, relationship: a.relationship }),
+          body: JSON.stringify({ memberId: row.memberId, relationship: row.relationship }),
         });
       }
 
@@ -125,16 +145,10 @@ export default function NewFamilyForm({ members }: { members: Member[] }) {
             <p className="text-xs text-gray-400">Give this family account a name</p>
           </div>
         </div>
-
         <div className="form-group">
           <label className="label label-required">Family Name</label>
-          <input
-            className="input"
-            required
-            placeholder="e.g. The Smith Family"
-            value={name}
-            onChange={e => setName(e.target.value)}
-          />
+          <input className="input" required placeholder="e.g. The Smith Family"
+            value={name} onChange={e => setName(e.target.value)} />
         </div>
       </div>
 
@@ -152,7 +166,7 @@ export default function NewFamilyForm({ members }: { members: Member[] }) {
 
         <div className="form-group">
           <label className="label label-required">Select Primary Member</label>
-          <div ref={searchRef} className="relative">
+          <div ref={primaryRef} className="relative">
             {selectedPrimary ? (
               <div className="flex items-center justify-between gap-3 p-3 border-2 border-yellow-400 bg-yellow-50 rounded-xl">
                 <div className="flex items-center gap-3 min-w-0">
@@ -173,21 +187,18 @@ export default function NewFamilyForm({ members }: { members: Member[] }) {
               <>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  <input
-                    className="input pl-9"
-                    placeholder="Search by name, member #, or email…"
+                  <input className="input pl-9" placeholder="Search by name, member #, or email…"
                     value={primarySearch}
-                    onChange={e => { setPrimarySearch(e.target.value); setShowDropdown(true); }}
-                    onFocus={() => setShowDropdown(true)}
-                  />
+                    onChange={e => { setPrimarySearch(e.target.value); setShowPrimary(true); }}
+                    onFocus={() => setShowPrimary(true)} />
                 </div>
-                {showDropdown && primarySearch.trim() && (
+                {showPrimary && primarySearch.trim() && (
                   <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
                     {filteredPrimary.length === 0 ? (
                       <p className="px-4 py-3 text-sm text-gray-400">No members found</p>
                     ) : filteredPrimary.map(m => (
                       <button key={m.id} type="button"
-                        onMouseDown={() => { setPrimaryId(m.id); setPrimarySearch(""); setShowDropdown(false); }}
+                        onMouseDown={() => { setPrimaryId(m.id); setPrimarySearch(""); setShowPrimary(false); }}
                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-yellow-50 text-left transition-colors border-b border-gray-50 last:border-0">
                         <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0 text-xs font-bold text-yellow-700">
                           {m.firstName.charAt(0)}{m.lastName.charAt(0)}
@@ -221,50 +232,91 @@ export default function NewFamilyForm({ members }: { members: Member[] }) {
               <p className="text-xs text-gray-400">Add more members to this family (optional)</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={addMember}
-            disabled={available.length === 0}
-            className="btn-secondary text-xs"
-          >
+          <button type="button" onClick={addRow} disabled={allUsed} className="btn-secondary text-xs">
             <Plus className="w-3.5 h-3.5" /> Add Member
           </button>
         </div>
 
-        {added.length === 0 ? (
+        {rows.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-4">No additional members added yet</p>
         ) : (
           <div className="space-y-3">
-            {added.map((a, idx) => {
-              const rowAvailable = members.filter(m => m.id === a.memberId || !usedIds.has(m.id) || !added.some((x, i) => i !== idx && x.memberId === m.id));
+            {rows.map(row => {
+              const sel = members.find(m => m.id === row.memberId) ?? null;
+              const filtered = row.search.trim()
+                ? filterMembers(members, row.search, usedIds, row.memberId)
+                : [];
+
               return (
-                <div key={idx} className="flex gap-3 items-start bg-gray-50 rounded-xl p-3">
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <select
-                      className="select text-sm"
-                      value={a.memberId}
-                      onChange={e => updateAdded(idx, "memberId", e.target.value)}
-                    >
-                      {rowAvailable.map(m => (
-                        <option key={m.id} value={m.id}>
-                          {m.firstName} {m.lastName} ({m.memberNumber})
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="select text-sm"
-                      value={a.relationship}
-                      onChange={e => updateAdded(idx, "relationship", e.target.value)}
-                    >
+                <div key={row.rowId} className="bg-gray-50 rounded-xl p-3 space-y-2.5">
+                  {/* Member search */}
+                  <div className="relative">
+                    {sel ? (
+                      <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-2 border-indigo-300 bg-indigo-50 rounded-xl">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-indigo-200 flex items-center justify-center flex-shrink-0 text-xs font-bold text-indigo-800">
+                            {sel.firstName.charAt(0)}{sel.lastName.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{sel.firstName} {sel.lastName}</p>
+                            <p className="text-xs text-gray-500 truncate">{sel.memberNumber} · {sel.email}</p>
+                          </div>
+                        </div>
+                        <button type="button"
+                          onClick={() => updateRow(row.rowId, { memberId: "", search: "", open: false })}
+                          className="text-gray-400 hover:text-red-500 flex-shrink-0 transition-colors">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                          <input
+                            className="input pl-9 text-sm"
+                            placeholder="Search member by name, # or email…"
+                            value={row.search}
+                            onChange={e => updateRow(row.rowId, { search: e.target.value, open: true })}
+                            onFocus={() => updateRow(row.rowId, { open: true })}
+                            onBlur={() => setTimeout(() => updateRow(row.rowId, { open: false }), 150)}
+                          />
+                        </div>
+                        {row.open && row.search.trim() && (
+                          <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                            {filtered.length === 0 ? (
+                              <p className="px-4 py-3 text-sm text-gray-400">No members found</p>
+                            ) : filtered.map(m => (
+                              <button key={m.id} type="button"
+                                onMouseDown={() => updateRow(row.rowId, { memberId: m.id, search: "", open: false })}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-indigo-50 text-left transition-colors border-b border-gray-50 last:border-0">
+                                <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-xs font-bold text-indigo-700">
+                                  {m.firstName.charAt(0)}{m.lastName.charAt(0)}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">{m.firstName} {m.lastName}</p>
+                                  <p className="text-xs text-gray-500 truncate">{m.memberNumber} · {m.email}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Relationship + Remove */}
+                  <div className="flex gap-2 items-center">
+                    <select className="select text-sm flex-1" value={row.relationship}
+                      onChange={e => updateRow(row.rowId, { relationship: e.target.value })}>
                       {RELATIONSHIPS.map(r => (
                         <option key={r.value} value={r.value}>{r.label}</option>
                       ))}
                     </select>
+                    <button type="button" onClick={() => removeRow(row.rowId)}
+                      className="text-gray-400 hover:text-red-500 flex-shrink-0 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button type="button" onClick={() => removeAdded(idx)}
-                    className="text-gray-400 hover:text-red-500 mt-1 flex-shrink-0">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
               );
             })}
