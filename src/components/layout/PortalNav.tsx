@@ -76,7 +76,7 @@ export default function PortalNav() {
               </p>
               <p className="text-[10px] text-gray-500 truncate">{user?.email}</p>
             </div>
-            <button onClick={() => signOut({ callbackUrl: "/login" })}
+            <button onClick={async () => { await signOut({ redirect: false }); window.location.href = "/login"; }}
               title="Sign out"
               className="text-gray-500 hover:text-white transition-colors flex-shrink-0">
               <LogOut className="w-3.5 h-3.5" />
@@ -120,7 +120,7 @@ export default function PortalNav() {
               );
             })}
             <div className="pt-2 border-t border-white/10">
-              <button onClick={() => signOut({ callbackUrl: "/login" })}
+              <button onClick={async () => { await signOut({ redirect: false }); window.location.href = "/login"; }}
                 className="flex items-center gap-3 px-4 py-3 w-full text-sm text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-all">
                 <LogOut className="w-4 h-4" />
                 Sign Out

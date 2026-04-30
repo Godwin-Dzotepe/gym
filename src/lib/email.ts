@@ -1,12 +1,21 @@
 import nodemailer from "nodemailer";
+import { wrapEmailTemplate } from "./email-template";
 
 interface SendEmailOpts {
   to: string;
   subject: string;
+  /** Inner body HTML — will be wrapped in the branded template automatically. */
   html: string;
   text?: string;
   fromEmail: string;
   fromName: string;
+  /** Extra branding passed to the template wrapper. */
+  gymName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  logoUrl?: string;
+  /** Set true to skip the template wrapper (e.g. already-wrapped HTML). */
+  raw?: boolean;
 }
 
 /**
@@ -14,6 +23,16 @@ interface SendEmailOpts {
  * Falls back to Nodemailer SMTP if Resend is not configured.
  */
 export async function sendEmail(opts: SendEmailOpts): Promise<void> {
+  const html = opts.raw
+    ? opts.html
+    : wrapEmailTemplate({
+        body: opts.html,
+        gymName: opts.gymName ?? opts.fromName,
+        contactEmail: opts.contactEmail,
+        contactPhone: opts.contactPhone,
+        logoUrl: opts.logoUrl,
+      });
+
   const resendKey = process.env.RESEND_API_KEY;
 
   if (resendKey) {
@@ -27,7 +46,7 @@ export async function sendEmail(opts: SendEmailOpts): Promise<void> {
         from: `${opts.fromName} <${opts.fromEmail}>`,
         to: [opts.to],
         subject: opts.subject,
-        html: opts.html,
+        html,
         text: opts.text,
       }),
     });
@@ -59,7 +78,7 @@ export async function sendEmail(opts: SendEmailOpts): Promise<void> {
     from: `"${opts.fromName}" <${opts.fromEmail}>`,
     to: opts.to,
     subject: opts.subject,
-    html: opts.html,
+    html,
     text: opts.text,
   });
 }
@@ -74,7 +93,11 @@ export async function sendBulkEmail(
   buildHtml: (firstName: string) => string,
   fromEmail: string,
   fromName: string,
+  gymName?: string,
 ): Promise<{ sent: number; failed: number }> {
+  const wrap = (firstName: string) =>
+    wrapEmailTemplate({ body: buildHtml(firstName), gymName: gymName ?? fromName });
+
   const resendKey = process.env.RESEND_API_KEY;
   let sent = 0;
   let failed = 0;
@@ -88,7 +111,7 @@ export async function sendBulkEmail(
         from: `${fromName} <${fromEmail}>`,
         to: [r.to],
         subject,
-        html: buildHtml(r.firstName),
+        html: wrap(r.firstName),
       }));
 
       const res = await fetch("https://api.resend.com/emails/batch", {
@@ -129,7 +152,7 @@ export async function sendBulkEmail(
         from: `"${fromName}" <${fromEmail}>`,
         to: r.to,
         subject,
-        html: buildHtml(r.firstName),
+        html: wrap(r.firstName),
       })
     )
   );

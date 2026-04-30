@@ -41,6 +41,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.7.284",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"

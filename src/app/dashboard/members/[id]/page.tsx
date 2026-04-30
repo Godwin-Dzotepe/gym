@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import Link from "next/link";
 import {
-  Phone, Mail, MapPin, Shield, Calendar, CreditCard,
-  Clock, Edit, CheckCircle2, AlertTriangle, Trophy,
-  ClipboardList, ArrowLeft, Key, Users, FileText,
+  Phone, Mail, Shield, CreditCard,
+  Clock, CheckCircle2, AlertTriangle, Trophy,
+  ClipboardList, ArrowLeft,
 } from "lucide-react";
 import MemberActions from "@/components/members/MemberActions";
 import MemberMemberships from "@/components/members/MemberMemberships";
@@ -129,10 +129,6 @@ export default async function MemberProfilePage({ params }: Props) {
           </div>
           <div className="flex flex-row sm:flex-col items-start sm:items-end gap-2 flex-wrap">
             <MemberActions memberId={member.id} memberStatus={member.status} />
-            <Link href={`/dashboard/members/${member.id}/edit`}
-              className="btn-secondary text-xs">
-              <Edit className="w-3.5 h-3.5" /> Edit
-            </Link>
             <MemberBalanceButton memberId={member.id} balance={Number(member.balance)} />
           </div>
         </div>
@@ -166,6 +162,7 @@ export default async function MemberProfilePage({ params }: Props) {
             memberId={member.id}
             memberPlans={member.memberPlans.map(mp => ({
               id: mp.id,
+              planId: mp.planId,
               planName: mp.plan.name,
               planType: mp.plan.planType,
               price: Number(mp.plan.price),

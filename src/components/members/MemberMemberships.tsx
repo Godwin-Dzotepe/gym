@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { formatDate } from "@/lib/utils";
 import { useFormatCurrency } from "@/components/providers/CurrencyProvider";
-import { Plus, X, Snowflake, Pause, XCircle, CheckCircle } from "lucide-react";
+import { Plus, X, Snowflake, Pause, XCircle, CheckCircle, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface MemberPlanRow {
   id: string;
+  planId: string;
   planName: string;
   planType: string;
   price: number;
@@ -45,6 +46,7 @@ export default function MemberMemberships({
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [paymentMethod, setPaymentMethod] = useState("MANUAL");
   const [saving, setSaving] = useState(false);
+  const [renewingId, setRenewingId] = useState<string | null>(null);
 
   const openAdd = async () => {
     const res = await fetch("/api/plans");
@@ -64,6 +66,29 @@ export default function MemberMemberships({
     setSaving(false);
     setShowAdd(false);
     toast.success("Membership assigned successfully.");
+    router.refresh();
+  };
+
+  const renewMembership = async (mp: MemberPlanRow) => {
+    const ok = await confirm({
+      title: "Renew Membership?",
+      message: `This will create a new ${mp.planName} membership starting from ${mp.endDate ? formatDate(mp.endDate) : "today"}.`,
+      confirmLabel: "Renew",
+      danger: false,
+    });
+    if (!ok) return;
+    setRenewingId(mp.id);
+    // Start the new term from where the current one ends (or today if already expired)
+    const nextStart = mp.endDate && new Date(mp.endDate) > new Date()
+      ? mp.endDate.split("T")[0]
+      : new Date().toISOString().split("T")[0];
+    await fetch("/api/members/plans", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId, planId: mp.planId, startDate: nextStart, paymentMethod: mp.paymentMethod }),
+    });
+    setRenewingId(null);
+    toast.success(`${mp.planName} renewed successfully.`);
     router.refresh();
   };
 
@@ -132,7 +157,12 @@ export default function MemberMemberships({
               </div>
 
               {mp.isActive && (
-                <div className="flex gap-1.5 flex-shrink-0">
+                <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
+                  <button onClick={() => renewMembership(mp)} disabled={renewingId === mp.id}
+                    className="text-xs px-2 py-1 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 flex items-center gap-1">
+                    <RefreshCw className={`w-3 h-3 ${renewingId === mp.id ? "animate-spin" : ""}`} />
+                    {renewingId === mp.id ? "Renewing…" : "Renew"}
+                  </button>
                   {!mp.isFrozen && (
                     <button onClick={() => action(mp.id, "freeze")}
                       className="text-xs px-2 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 flex items-center gap-1">

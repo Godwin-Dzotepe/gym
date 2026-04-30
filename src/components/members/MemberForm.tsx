@@ -12,6 +12,18 @@ interface Plan {
   price: number;
   billingCycle: string;
   planType: string;
+  durationType: string;
+  duration: number;
+}
+
+function calcEndDate(plan: Plan, startStr: string): string {
+  if (!startStr || plan.durationType === "ONGOING") return "";
+  const d = new Date(startStr);
+  if (plan.billingCycle === "DAILY")        d.setDate(d.getDate() + plan.duration);
+  else if (plan.billingCycle === "WEEKLY")  d.setDate(d.getDate() + plan.duration * 7);
+  else if (plan.billingCycle === "MONTHLY") d.setMonth(d.getMonth() + plan.duration);
+  else if (plan.billingCycle === "YEARLY")  d.setFullYear(d.getFullYear() + plan.duration);
+  return d.toISOString().split("T")[0];
 }
 
 const CYCLE_LABEL: Record<string, string> = { DAILY: "/day", WEEKLY: "/wk", MONTHLY: "/mo", YEARLY: "/yr" };
@@ -45,6 +57,14 @@ export default function MemberForm({ defaultValues, memberId }: Props) {
       if (familyPlanId && !selectedPlanId) setSelectedPlanId(familyPlanId);
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!selectedPlanId) { setPlanEndDate(""); return; }
+    const plan = plans.find(p => p.id === selectedPlanId);
+    if (!plan) return;
+    const auto = calcEndDate(plan, planStartDate);
+    setPlanEndDate(auto);
+  }, [selectedPlanId, planStartDate, plans]);
 
   const [form, setForm] = useState({
     firstName: defaultValues?.firstName ?? "",
@@ -254,10 +274,13 @@ export default function MemberForm({ defaultValues, memberId }: Props) {
                         onChange={e => setPlanStartDate(e.target.value)} required />
                     </div>
                     <div className="form-group">
-                      <label className="label">End Date <span className="text-gray-400 font-normal">(optional)</span></label>
+                      <label className="label">
+                        End Date
+                        {planEndDate && <span className="ml-1 text-indigo-500 font-normal text-xs">auto-calculated</span>}
+                        {!planEndDate && <span className="text-gray-400 font-normal"> (optional)</span>}
+                      </label>
                       <input type="date" className="input" value={planEndDate}
-                        onChange={e => setPlanEndDate(e.target.value)}
-                        placeholder="Leave blank to auto-calculate" />
+                        onChange={e => setPlanEndDate(e.target.value)} />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
         (firstName) => `<p>Hi ${firstName},</p><p>${body.replace(/\n/g, "<br/>")}</p>`,
         fromEmail,
         fromName,
+        gymName,
       );
 
       if (failed > 0 && failed === withEmail.length) {

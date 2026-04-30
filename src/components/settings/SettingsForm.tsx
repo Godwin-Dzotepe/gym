@@ -7,6 +7,7 @@ import {
   AlarmClock, Shield, Eye, UserCog, QrCode, Trophy,
   GitBranch, ShoppingBag, DoorOpen, Video, ChevronRight,
   BellRing, MessageSquare, Send, Upload, Search, Wallet,
+  Lock, KeyRound,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import Image from "next/image";
@@ -90,6 +91,15 @@ export default function SettingsForm({ settings }: { settings: any }) {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
+  // SMS & Email tab password gate
+  const [emailTabUnlocked, setEmailTabUnlocked] = useState(false);
+  const [emailGatePass, setEmailGatePass] = useState("");
+  const [emailGateError, setEmailGateError] = useState(false);
+
+  // Change login password (Gym Profile tab)
+  const [changePw, setChangePw] = useState({ current: "", next: "", confirm: "" });
+  const [changePwLoading, setChangePwLoading] = useState(false);
+
   const [form, setForm] = useState({
     gymName:                   settings?.gymName                   ?? "",
     gymType:                   settings?.gymType                   ?? "FITNESS",
@@ -157,6 +167,32 @@ export default function SettingsForm({ settings }: { settings: any }) {
     toast.success(`Test email sent to ${d.sentTo}`);
   }
 
+  async function handleChangePassword() {
+    if (!changePw.current || !changePw.next || !changePw.confirm) {
+      toast.error("All password fields are required.");
+      return;
+    }
+    if (changePw.next !== changePw.confirm) {
+      toast.error("New passwords do not match.");
+      return;
+    }
+    if (changePw.next.length < 8) {
+      toast.error("New password must be at least 8 characters.");
+      return;
+    }
+    setChangePwLoading(true);
+    const res = await fetch("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current: changePw.current, next: changePw.next }),
+    });
+    const d = await res.json();
+    setChangePwLoading(false);
+    if (!res.ok) { toast.error(d.error ?? "Failed to update password."); return; }
+    toast.success("Password updated successfully.");
+    setChangePw({ current: "", next: "", confirm: "" });
+  }
+
   async function uploadLogo(file: File) {
     setLogoUploading(true);
     const fd = new FormData();
@@ -211,7 +247,10 @@ export default function SettingsForm({ settings }: { settings: any }) {
             sky: "text-sky-600 bg-sky-100",
           };
           return (
-            <button key={t.id} onClick={() => setTab(t.id)}
+            <button key={t.id} onClick={() => {
+                if (t.id !== "email") { setEmailTabUnlocked(false); setEmailGatePass(""); setEmailGateError(false); }
+                setTab(t.id);
+              }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left group ${
                 isActive ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
               }`}>
@@ -311,6 +350,49 @@ export default function SettingsForm({ settings }: { settings: any }) {
                       </div>
                     </FieldGroup>
                   </div>
+                </div>
+              </div>
+
+              {/* ── Change Login Password ── */}
+              <div className="border-t border-gray-100 mt-6 pt-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center flex-shrink-0">
+                    <KeyRound className="w-4 h-4 text-rose-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">Change Login Password</p>
+                    <p className="text-xs text-gray-400">Update the password you use to sign in to the dashboard</p>
+                  </div>
+                </div>
+                <div className="space-y-4 max-w-sm">
+                  <FieldGroup label="Current Password">
+                    <PasswordInput
+                      className="input"
+                      value={changePw.current}
+                      onChange={e => setChangePw(p => ({ ...p, current: e.target.value }))}
+                      placeholder="Enter current password"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="New Password" hint="Minimum 8 characters">
+                    <PasswordInput
+                      className="input"
+                      value={changePw.next}
+                      onChange={e => setChangePw(p => ({ ...p, next: e.target.value }))}
+                      placeholder="Enter new password"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Confirm New Password">
+                    <PasswordInput
+                      className="input"
+                      value={changePw.confirm}
+                      onChange={e => setChangePw(p => ({ ...p, confirm: e.target.value }))}
+                      placeholder="Repeat new password"
+                    />
+                  </FieldGroup>
+                  <button onClick={handleChangePassword} disabled={changePwLoading} className="btn-primary">
+                    {changePwLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                    Update Password
+                  </button>
                 </div>
               </div>
             </>
@@ -540,7 +622,45 @@ export default function SettingsForm({ settings }: { settings: any }) {
           )}
 
           {/* ── SMS & Email ── */}
-          {tab === "email" && (
+          {tab === "email" && !emailTabUnlocked && (
+            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-sky-100 flex items-center justify-center mb-5">
+                <Lock className="w-7 h-7 text-sky-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Protected Area</h3>
+              <p className="text-sm text-gray-400 mb-6 max-w-xs">Enter the admin password to access SMS & Email settings</p>
+              <div className="w-full max-w-xs space-y-3">
+                <PasswordInput
+                  className={`input text-center tracking-widest ${emailGateError ? "border-red-400 bg-red-50" : ""}`}
+                  value={emailGatePass}
+                  onChange={e => { setEmailGatePass(e.target.value); setEmailGateError(false); }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      if (emailGatePass === "mrdaneil") { setEmailTabUnlocked(true); setEmailGatePass(""); setEmailGateError(false); }
+                      else { setEmailGateError(true); setEmailGatePass(""); }
+                    }
+                  }}
+                  placeholder="Enter password"
+                  autoFocus
+                />
+                {emailGateError && (
+                  <p className="text-xs text-red-500 font-medium">Incorrect password. Please try again.</p>
+                )}
+                <button
+                  className="btn-primary w-full justify-center"
+                  onClick={() => {
+                    if (emailGatePass === "mrdaneil") { setEmailTabUnlocked(true); setEmailGatePass(""); setEmailGateError(false); }
+                    else { setEmailGateError(true); setEmailGatePass(""); }
+                  }}
+                >
+                  <Lock className="w-4 h-4" />
+                  Unlock
+                </button>
+              </div>
+            </div>
+          )}
+
+          {tab === "email" && emailTabUnlocked && (
             <>
               {/* mNotify */}
               <SectionHeader icon={MessageSquare} title="mNotify — SMS & Email" desc="Enter your mNotify API key to send SMS and email messages to members" color="sky" />
@@ -726,16 +846,18 @@ export default function SettingsForm({ settings }: { settings: any }) {
           )}
         </div>
 
-        {/* Save bar */}
-        <div className="card px-5 py-4 flex items-center justify-between">
-          <p className="text-sm text-gray-400">
-            Editing <span className="font-medium text-gray-700">{activeTab.label}</span>
-          </p>
-          <button onClick={save} disabled={loading} className="btn-primary">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save Settings
-          </button>
-        </div>
+        {/* Save bar — hidden on email lock screen */}
+        {!(tab === "email" && !emailTabUnlocked) && (
+          <div className="card px-5 py-4 flex items-center justify-between">
+            <p className="text-sm text-gray-400">
+              Editing <span className="font-medium text-gray-700">{activeTab.label}</span>
+            </p>
+            <button onClick={save} disabled={loading} className="btn-primary">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save Settings
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
