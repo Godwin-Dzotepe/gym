@@ -221,12 +221,66 @@ export default function SettingsForm({ settings }: { settings: any }) {
 
   const activeTab = TABS.find(t => t.id === tab)!;
 
-  return (
-    <div className="flex gap-6 items-start">
+  const iconColors: Record<string, string> = {
+    indigo: "text-indigo-600 bg-indigo-100",
+    emerald: "text-emerald-600 bg-emerald-100",
+    violet: "text-violet-600 bg-violet-100",
+    orange: "text-orange-600 bg-orange-100",
+    sky: "text-sky-600 bg-sky-100",
+    rose: "text-rose-600 bg-rose-100",
+    amber: "text-amber-600 bg-amber-100",
+  };
 
-      {/* ── Sidebar ── */}
-      <div className="w-52 flex-shrink-0 space-y-1">
-        {/* Gym card */}
+  function TabButton({ t, mobile = false }: { t: typeof TABS[0]; mobile?: boolean }) {
+    const isActive = tab === t.id;
+    return (
+      <button
+        key={t.id}
+        onClick={() => {
+          if (t.id !== "email") { setEmailTabUnlocked(false); setEmailGatePass(""); setEmailGateError(false); }
+          setTab(t.id);
+        }}
+        className={mobile
+          ? `flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+              isActive ? "bg-indigo-600 text-white shadow-sm" : "text-gray-500 bg-gray-100 hover:bg-gray-200"
+            }`
+          : `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
+              isActive ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+            }`
+        }
+      >
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+          isActive ? "bg-white/20 text-white" : iconColors[t.color] ?? "text-gray-600 bg-gray-100"
+        }`}>
+          <t.icon className="w-3.5 h-3.5" />
+        </div>
+        <span className={mobile ? "" : "flex-1 truncate"}>{t.label}</span>
+        {!mobile && isActive && <ChevronRight className="w-3.5 h-3.5 opacity-60 flex-shrink-0" />}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
+
+      {/* ── Mobile tab strip (hidden on lg+) ── */}
+      <div className="lg:hidden w-full">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-orange-400/70 flex-shrink-0">
+            <Image src={logoPreview ?? "/gym-logo.png"} alt="Logo" width={36} height={36} className="object-cover w-full h-full" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-bold text-gray-900 text-sm truncate">{form.gymName || "Your Gym"}</p>
+            <p className="text-xs text-gray-400 capitalize">{form.gymType.replace("_", " ").toLowerCase()}</p>
+          </div>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+          {TABS.map(t => <TabButton key={t.id} t={t} mobile />)}
+        </div>
+      </div>
+
+      {/* ── Desktop sidebar (hidden below lg) ── */}
+      <div className="hidden lg:block w-52 flex-shrink-0 space-y-1">
         <div className="card p-4 mb-4 flex items-center gap-3">
           <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-orange-400/70 flex-shrink-0">
             <Image src={logoPreview ?? "/gym-logo.png"} alt="Logo" width={48} height={48} className="object-cover w-full h-full" />
@@ -236,39 +290,12 @@ export default function SettingsForm({ settings }: { settings: any }) {
             <p className="text-xs text-gray-400 capitalize">{form.gymType.replace("_", " ").toLowerCase()}</p>
           </div>
         </div>
-
-        {TABS.map(t => {
-          const isActive = tab === t.id;
-          const iconColors: Record<string, string> = {
-            indigo: "text-indigo-600 bg-indigo-100",
-            emerald: "text-emerald-600 bg-emerald-100",
-            violet: "text-violet-600 bg-violet-100",
-            orange: "text-orange-600 bg-orange-100",
-            sky: "text-sky-600 bg-sky-100",
-          };
-          return (
-            <button key={t.id} onClick={() => {
-                if (t.id !== "email") { setEmailTabUnlocked(false); setEmailGatePass(""); setEmailGateError(false); }
-                setTab(t.id);
-              }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left group ${
-                isActive ? "bg-indigo-600 text-white shadow-md shadow-indigo-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-              }`}>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
-                isActive ? "bg-white/20 text-white" : iconColors[t.color]
-              }`}>
-                <t.icon className="w-3.5 h-3.5" />
-              </div>
-              <span className="flex-1 truncate">{t.label}</span>
-              {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-60 flex-shrink-0" />}
-            </button>
-          );
-        })}
+        {TABS.map(t => <TabButton key={t.id} t={t} />)}
       </div>
 
       {/* ── Content ── */}
-      <div className="flex-1 min-w-0 space-y-4">
-        <div className="card p-6">
+      <div className="flex-1 min-w-0 w-full space-y-4">
+        <div className="card p-4 sm:p-6">
 
           {/* ── Gym Profile ── */}
           {tab === "gym" && (
@@ -848,11 +875,11 @@ export default function SettingsForm({ settings }: { settings: any }) {
 
         {/* Save bar — hidden on email lock screen */}
         {!(tab === "email" && !emailTabUnlocked) && (
-          <div className="card px-5 py-4 flex items-center justify-between">
+          <div className="card px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <p className="text-sm text-gray-400">
               Editing <span className="font-medium text-gray-700">{activeTab.label}</span>
             </p>
-            <button onClick={save} disabled={loading} className="btn-primary">
+            <button onClick={save} disabled={loading} className="btn-primary w-full sm:w-auto justify-center">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Settings
             </button>

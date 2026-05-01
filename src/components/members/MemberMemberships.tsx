@@ -134,9 +134,9 @@ export default function MemberMemberships({
           </div>
         ) : memberPlans.map((mp) => (
           <div key={mp.id} className="px-5 py-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-col sm:flex-row items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <p className="font-semibold text-gray-900">{mp.planName}</p>
                   {mp.isActive && !mp.isFrozen && !mp.isPaused && (
                     <span className="badge badge-green text-xs">Active</span>
@@ -157,7 +157,7 @@ export default function MemberMemberships({
               </div>
 
               {mp.isActive && (
-                <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
+                <div className="flex gap-1.5 flex-wrap sm:flex-shrink-0 sm:justify-end">
                   <button onClick={() => renewMembership(mp)} disabled={renewingId === mp.id}
                     className="text-xs px-2 py-1 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 flex items-center gap-1">
                     <RefreshCw className={`w-3 h-3 ${renewingId === mp.id ? "animate-spin" : ""}`} />
