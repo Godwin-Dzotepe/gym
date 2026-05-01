@@ -60,7 +60,7 @@ export default function POSTerminal({ products }: { products: Product[] }) {
       {/* Products */}
       <div className="p-4 border-b border-slate-100">
         <p className="text-xs text-slate-400 font-medium mb-2">TAP TO ADD</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {products.map((p) => (
             <button key={p.id} onClick={() => addToCart(p)}
               className="p-2.5 border border-slate-100 rounded-xl text-left hover:border-sky-200 hover:bg-sky-50 transition-all active:scale-95">
@@ -69,7 +69,7 @@ export default function POSTerminal({ products }: { products: Product[] }) {
             </button>
           ))}
           {products.length === 0 && (
-            <p className="col-span-3 text-sm text-slate-400 text-center py-4">No products</p>
+            <p className="col-span-2 sm:col-span-3 text-sm text-slate-400 text-center py-4">No products</p>
           )}
         </div>
       </div>

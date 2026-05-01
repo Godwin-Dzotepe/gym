@@ -198,7 +198,7 @@ export default function RanksManager({ ranks: initial, promotions, members, sugg
                   <input type="color" value={rankForm.color} onChange={e => setRankForm(p => ({ ...p, color: e.target.value }))} className="w-8 h-8 rounded-full cursor-pointer border-0 p-0" />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <div className="form-group"><label className="label">Order</label>
                   <input className="input" type="number" min="0" value={rankForm.order} onChange={e => setRankForm(p => ({ ...p, order: parseInt(e.target.value) }))} /></div>
                 <div className="form-group"><label className="label">Sessions</label>

@@ -26,7 +26,7 @@ export default async function MessagesPage() {
         <p className="text-slate-500 text-sm mt-0.5">Send emails or SMS to member segments</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: "Active Members",  value: activeCount.toString(),  icon: Users, card: "bg-sky-500",  iconBg: "bg-sky-400/30" },
           { label: "Frozen",          value: frozenCount.toString(),  icon: Users, card: "bg-blue-500", iconBg: "bg-blue-400/30" },

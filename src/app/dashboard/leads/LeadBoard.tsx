@@ -51,7 +51,7 @@ export default function LeadBoard({ leads }: { leads: any[] }) {
   return (
     <div className="space-y-4">
       {/* 5 Status Column Cards */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {COLUMNS.map((col) => {
           const Icon = col.icon;
           const count = (byStatus[col.key] ?? []).length;
@@ -129,8 +129,8 @@ export default function LeadBoard({ leads }: { leads: any[] }) {
           {selectedLeads.length > 0 && (
             <div className="divide-y divide-black/5">
               {selectedLeads.map((lead) => (
-                <div key={lead.id} className="flex items-center justify-between px-5 py-4 hover:bg-black/[0.02] transition-colors group">
-                  <div className="flex items-center gap-4 min-w-0">
+                <div key={lead.id} className="flex items-start sm:items-center justify-between px-4 py-3 sm:px-5 sm:py-4 hover:bg-black/[0.02] transition-colors group gap-3">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                     {/* Avatar */}
                     <div className={`w-10 h-10 rounded-full ${selectedCol.iconBg} flex items-center justify-center shrink-0 font-bold text-sm ${selectedCol.iconColor}`}>
                       {lead.firstName[0]}{lead.lastName[0]}
@@ -170,10 +170,10 @@ export default function LeadBoard({ leads }: { leads: any[] }) {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0 ml-4">
-                    <span className="text-xs text-slate-400">{formatDate(lead.createdAt)}</span>
+                  <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                    <span className="text-xs text-slate-400 hidden sm:block">{formatDate(lead.createdAt)}</span>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                       <Link href={`/dashboard/leads/${lead.id}`}
                         className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center hover:border-slate-300 transition-all"
                         title="Edit">

@@ -327,7 +327,7 @@ export default function SettingsForm({ settings }: { settings: any }) {
 
                 <div className="border-t border-gray-100 pt-5">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Regional Settings</p>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FieldGroup label="Currency">
                       <div className="relative">
                         <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -455,7 +455,7 @@ export default function SettingsForm({ settings }: { settings: any }) {
                 {/* Summary card */}
                 <div className="bg-violet-50 border border-violet-100 rounded-2xl p-5">
                   <p className="text-xs font-bold text-violet-700 uppercase tracking-wider mb-3">Current Configuration</p>
-                  <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
                     <div>
                       <p className="text-2xl font-black text-violet-700">{form.taxRate}%</p>
                       <p className="text-xs text-violet-400 mt-0.5">Tax Rate</p>
@@ -694,7 +694,7 @@ export default function SettingsForm({ settings }: { settings: any }) {
                     <input className="input pl-9" value={form.smtpHost} onChange={e => set("smtpHost", e.target.value)} placeholder="smtp.gmail.com" />
                   </div>
                 </FieldGroup>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldGroup label="Port" hint="Usually 587 (TLS) or 465 (SSL)">
                     <input className="input" type="number" value={form.smtpPort} onChange={e => set("smtpPort", e.target.value)} placeholder="587" />
                   </FieldGroup>
@@ -736,7 +736,7 @@ export default function SettingsForm({ settings }: { settings: any }) {
               <div className="space-y-5">
 
                 <FieldGroup label="Payment Type">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {[
                       { value: "MOMO",  label: "Mobile Money" },
                       { value: "BANK",  label: "Bank Transfer" },

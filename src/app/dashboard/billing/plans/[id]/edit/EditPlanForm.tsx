@@ -263,7 +263,7 @@ export default function EditPlanForm({ plan }: { plan: any }) {
               <div className="border-t border-slate-100 pt-4">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Family Discounts</p>
                 <p className="text-xs text-slate-400 mb-3">Percentage discount applied to additional family members.</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { key: "familyDiscount2nd", label: "2nd Member" },
                     { key: "familyDiscount3rd", label: "3rd Member" },
