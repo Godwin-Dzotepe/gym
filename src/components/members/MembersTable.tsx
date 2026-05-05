@@ -22,14 +22,15 @@ interface Member {
 }
 
 function formatDaysLeft(days: number): string {
-  if (days === 1) return "1 day left";
-  if (days < 7) return `${days} days left`;
-  const weeks = Math.floor(days / 7);
-  const rem = days % 7;
-  const w = weeks === 1 ? "1 week" : `${weeks} weeks`;
-  if (rem === 0) return `${w} left`;
-  const d = rem === 1 ? "1 day" : `${rem} days`;
-  return `${w} and ${d} left`;
+  const months = Math.floor(days / 30);
+  const remAfterMonths = days % 30;
+  const weeks = Math.floor(remAfterMonths / 7);
+  const remDays = remAfterMonths % 7;
+  const parts: string[] = [];
+  if (months > 0) parts.push(months === 1 ? "1 month" : `${months} months`);
+  if (weeks  > 0) parts.push(weeks  === 1 ? "1 week"  : `${weeks} weeks`);
+  if (remDays > 0) parts.push(remDays === 1 ? "1 day"  : `${remDays} days`);
+  return (parts.length ? parts.join(" ") : "0 days") + " left";
 }
 
 function MembershipCountdown({ endDate, warningDays }: { endDate: Date | null; warningDays: number }) {
