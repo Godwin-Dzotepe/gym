@@ -72,20 +72,17 @@ export default function MemberMemberships({
   const renewMembership = async (mp: MemberPlanRow) => {
     const ok = await confirm({
       title: "Renew Membership?",
-      message: `This will create a new ${mp.planName} membership starting from ${mp.endDate ? formatDate(mp.endDate) : "today"}.`,
+      message: `This will cancel the current ${mp.planName} membership and start a fresh one from today.`,
       confirmLabel: "Renew",
       danger: false,
     });
     if (!ok) return;
     setRenewingId(mp.id);
-    // Start the new term from where the current one ends (or today if already expired)
-    const nextStart = mp.endDate && new Date(mp.endDate) > new Date()
-      ? mp.endDate.split("T")[0]
-      : new Date().toISOString().split("T")[0];
+    const today = new Date().toISOString().split("T")[0];
     await fetch("/api/members/plans", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ memberId, planId: mp.planId, startDate: nextStart, paymentMethod: mp.paymentMethod }),
+      body: JSON.stringify({ memberId, planId: mp.planId, startDate: today, paymentMethod: mp.paymentMethod, renewFromPlanId: mp.id }),
     });
     setRenewingId(null);
     toast.success(`${mp.planName} renewed successfully.`);

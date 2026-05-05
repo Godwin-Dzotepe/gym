@@ -12,7 +12,7 @@ function calcNextBillingDate(from: Date, billingCycle: string): Date {
 }
 
 export async function POST(req: NextRequest) {
-  const { memberId, planId, startDate, endDate: customEndDate, paymentMethod, discount: manualDiscount } = await req.json();
+  const { memberId, planId, startDate, endDate: customEndDate, paymentMethod, discount: manualDiscount, renewFromPlanId } = await req.json();
   if (!memberId || !planId) return NextResponse.json({ error: "memberId and planId required" }, { status: 400 });
 
   const plan = await prisma.plan.findUnique({ where: { id: planId } });
@@ -97,6 +97,14 @@ export async function POST(req: NextRequest) {
         dueDate: start,
         status: "PENDING",
       },
+    });
+  }
+
+  // Cancel the previous plan on renewal
+  if (renewFromPlanId) {
+    await prisma.memberPlan.update({
+      where: { id: renewFromPlanId },
+      data: { isActive: false, cancelledAt: new Date() },
     });
   }
 
