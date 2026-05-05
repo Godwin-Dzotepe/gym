@@ -63,6 +63,15 @@ export async function POST(req: NextRequest) {
     else if (plan.billingCycle === "YEARLY")  endDate.setFullYear(endDate.getFullYear() + plan.duration);
   }
 
+  // For renewals of SPECIFIC_DATES plans: carry the same duration from the old plan
+  if (!endDate && renewFromPlanId && plan.durationType === "SPECIFIC_DATES") {
+    const oldPlan = await prisma.memberPlan.findUnique({ where: { id: renewFromPlanId } });
+    if (oldPlan?.endDate && oldPlan?.startDate) {
+      const durationMs = oldPlan.endDate.getTime() - oldPlan.startDate.getTime();
+      endDate = new Date(start.getTime() + durationMs);
+    }
+  }
+
   // nextBillingDate: for ONGOING = start + 1 cycle; for LIMITED = endDate; for SPECIFIC_DATES = endDate
   const nextBillingDate = plan.durationType === "ONGOING"
     ? calcNextBillingDate(start, plan.billingCycle)

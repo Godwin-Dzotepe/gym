@@ -46,6 +46,7 @@ export default async function MembersPage({ searchParams }: Props) {
         memberPlans: {
           where: { isActive: true },
           include: { plan: { select: { name: true } } },
+          orderBy: { startDate: 'desc' },
           take: 1,
         },
         invoices: { where: { status: "PENDING" }, select: { id: true } },
